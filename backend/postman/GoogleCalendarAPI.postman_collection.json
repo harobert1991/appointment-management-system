@@ -1,0 +1,168 @@
+{
+  "info": {
+    "name": "Google Calendar API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Google OAuth URL",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/auth-url",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth-url"
+          ]
+        },
+        "header": []
+      }
+    },
+    {
+      "name": "Handle Google Calendar OAuth callback",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/google_calendar_callback",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "google_calendar_callback"
+          ],
+          "query": [
+            {
+              "key": "code",
+              "value": "{{code}}"
+            },
+            {
+              "key": "error",
+              "value": "{{error}}"
+            },
+            {
+              "key": "state",
+              "value": "{{state}}"
+            }
+          ]
+        },
+        "header": []
+      }
+    },
+    {
+      "name": "Refresh access token",
+      "request": {
+        "method": "POST",
+        "url": {
+          "raw": "{{baseUrl}}/refresh-token",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "refresh-token"
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Validate access token",
+      "request": {
+        "method": "POST",
+        "url": {
+          "raw": "{{baseUrl}}/validate-token",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "validate-token"
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"access_token\": \"{{access_token}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Handle Google Calendar push notifications",
+      "request": {
+        "method": "POST",
+        "url": {
+          "raw": "{{baseUrl}}/push-notification",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "push-notification"
+          ]
+        },
+        "header": []
+      }
+    },
+    {
+      "name": "Test token refresh functionality",
+      "request": {
+        "method": "POST",
+        "url": {
+          "raw": "{{baseUrl}}/test-refresh",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "test-refresh"
+          ]
+        },
+        "header": []
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "code",
+      "value": "your_code_here",
+      "type": "string"
+    },
+    {
+      "key": "error",
+      "value": "your_error_here",
+      "type": "string"
+    },
+    {
+      "key": "state",
+      "value": "your_state_here",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "your_refresh_token_here",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "your_access_token_here",
+      "type": "string"
+    }
+  ]
+}
