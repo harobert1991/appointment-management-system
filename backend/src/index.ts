@@ -1,18 +1,16 @@
 import express, { Request, Response } from 'express';
-import routes from './routes';
+import { loadRoutes } from './utils/routeLoader';
 import { connectDB } from './config';
 import { logger } from './utils';
 import dotenv from 'dotenv';
 import path from 'path';
-import { GoogleCalendarService } from './services/googleCalendarService';
-import { GoogleCalendarAuth } from './utils/googleAuth';
-import { TokenRefreshScheduler } from './services/tokenRefreshScheduler';
+import { GoogleCalendarService } from './modules/googleCalendarToken/googleCalendarToken.services';
+import { TokenRefreshScheduler } from './modules/googleCalendarToken/utils/tokenRefreshScheduler';
 
 // Add debug logs for .env loading
 const envPath = path.resolve(__dirname, '../.env');
 
 dotenv.config({ path: envPath });
-
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,33 +21,36 @@ const googleAuthConfig = {
   redirectUri: process.env.GOOGLE_REDIRECT_URI!,
 };
 
-const googleAuth = GoogleCalendarAuth.getInstance(googleAuthConfig);
 const googleCalendarService = GoogleCalendarService.getInstance({
   clientId: googleAuthConfig.clientId,
   clientSecret: googleAuthConfig.clientSecret,
   redirectUri: googleAuthConfig.redirectUri
 });
 
-// Initialize and start the token refresh scheduler
+// Initialize and start the token refresh scheduler only in non-test environment
 const tokenRefreshScheduler = TokenRefreshScheduler.initialize(googleCalendarService);
-tokenRefreshScheduler.startScheduler();
+if (process.env.NODE_ENV !== 'test') {
+  tokenRefreshScheduler.startScheduler();
+}
 
+// Initialize express and middleware
 app.use(express.json());
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Appointment Management System API');
 });
 
-// Mount all routes
-app.use('/', routes);
-
 // Initialize the server
 const startServer = async () => {
   try {
-    // Connect to MongoDB
+    // Connect to MongoDB first
     await connectDB();
 
-    // Start the server
+    // Load routes once at startup
+    const { router } = await loadRoutes();
+    app.use('/api', router); // Changed to /api prefix for better organization
+
+    // Start the server only after routes are loaded
     const server = app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
     });
@@ -73,4 +74,5 @@ const startServer = async () => {
   }
 };
 
+// Start the server
 startServer();

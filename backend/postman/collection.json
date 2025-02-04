@@ -1,0 +1,230 @@
+{
+  "info": {
+    "name": "Appointment Management API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "appointment-events",
+      "item": [
+        {
+          "name": "Create a new appointment event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointment-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointment-events"
+              ]
+            },
+            "description": "Create a new appointment event",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"example\",\n  \"description\": \"example\",\n  \"appointmentType\": \"in_person\",\n  \"startDateTime\": \"2025-02-04T19:48:24.561Z\",\n  \"endDateTime\": \"2025-02-04T19:48:24.561Z\",\n  \"location\": \"example\",\n  \"participants\": [\n    {\n      \"userId\": \"example\",\n      \"role\": \"provider\",\n      \"name\": \"example\",\n      \"email\": \"example@email.com\",\n      \"phone\": \"example\"\n    }\n  ],\n  \"providerId\": \"example\",\n  \"reminderSettings\": [\n    {\n      \"type\": \"email\",\n      \"timeBeforeEvent\": 5,\n      \"isEnabled\": true\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "google-calendar",
+      "item": [
+        {
+          "name": "Get Google OAuth URL",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/google-calendar/auth-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "google-calendar",
+                "auth-url"
+              ]
+            },
+            "description": "Get Google OAuth URL"
+          },
+          "response": []
+        },
+        {
+          "name": "Handle Google Calendar OAuth callback",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/google-calendar/callback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "google-calendar",
+                "callback"
+              ]
+            },
+            "description": "Handle Google Calendar OAuth callback"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh access token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/google-calendar/refresh-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "google-calendar",
+                "refresh-token"
+              ]
+            },
+            "description": "Refresh access token"
+          },
+          "response": []
+        },
+        {
+          "name": "Handle Google Calendar push notifications",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/google-calendar/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "google-calendar",
+                "notifications"
+              ]
+            },
+            "description": "Handle Google Calendar push notifications",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"example\",\n  \"resourceId\": \"example\",\n  \"resourceUri\": \"example\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "users",
+      "item": [
+        {
+          "name": "Create a new user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Create a new user",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\",\n  \"firstName\": \"example\",\n  \"lastName\": \"example\",\n  \"email\": \"example@email.com\",\n  \"phone\": \"example\",\n  \"address\": {\n    \"street\": \"example\",\n    \"city\": \"example\",\n    \"state\": \"example\",\n    \"postalCode\": \"example\",\n    \"country\": \"example\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get user by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ":id"
+              ]
+            },
+            "description": "Get user by ID"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "localhost:3000",
+      "type": "string"
+    }
+  ]
+}

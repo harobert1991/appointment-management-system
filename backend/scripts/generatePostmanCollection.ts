@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import {routes}  from '../src/routes/googleCalendar';
+import {routes}  from '../src/modules/googleCalendarToken/googleCalendarToken.routes';
 import RouteConfig from '../src/utils/generateRoutes';
 
 interface PostmanRequest {

@@ -1,2 +1,2 @@
-export * from './google';
-export * from './database'; 
+export * from '../modules/googleCalendarToken/googleCalendarToken.config';
+export * from '../rootModules/database/database.config'; 
