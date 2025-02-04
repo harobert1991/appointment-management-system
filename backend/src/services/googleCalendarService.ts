@@ -1,6 +1,5 @@
-import { Credentials } from 'google-auth-library';
+import { OAuth2Client, Credentials } from 'google-auth-library';
 import { google } from 'googleapis';
-import { GoogleCalendarAuth } from '../utils/googleAuth';
 import { logger, Encryption } from '../utils';
 import { Token } from '../models/token';
 
@@ -16,17 +15,23 @@ export class GoogleCalendarService {
   private static instance: GoogleCalendarService;
   private calendar;
   private encryptionKey?: string;
+  private oAuth2Client: OAuth2Client;
 
-  private constructor(private readonly googleAuth: GoogleCalendarAuth) {
-    this.calendar = google.calendar({ version: 'v3', auth: this.googleAuth.getClient() });
+  private constructor(config: { clientId: string; clientSecret: string; redirectUri: string }) {
+    this.oAuth2Client = new OAuth2Client(
+      config.clientId,
+      config.clientSecret,
+      config.redirectUri
+    );
+    this.calendar = google.calendar({ version: 'v3', auth: this.oAuth2Client });
   }
 
-  public static getInstance(googleAuth?: GoogleCalendarAuth): GoogleCalendarService {
+  public static getInstance(config?: { clientId: string; clientSecret: string; redirectUri: string }): GoogleCalendarService {
     if (!GoogleCalendarService.instance) {
-      if (!googleAuth) {
-        throw new Error('GoogleAuth instance required for first initialization');
+      if (!config) {
+        throw new Error('Config required for first initialization');
       }
-      GoogleCalendarService.instance = new GoogleCalendarService(googleAuth);
+      GoogleCalendarService.instance = new GoogleCalendarService(config);
     }
     return GoogleCalendarService.instance;
   }
@@ -42,23 +47,34 @@ export class GoogleCalendarService {
   }
 
   public getAuthUrl(): string {
-    return this.googleAuth.getAuthUrl();
+    const scopes = [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/calendar.events'
+    ];
+
+    return this.oAuth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: scopes,
+      prompt: 'consent',
+      include_granted_scopes: true
+    });
   }
 
-  public async exchangeCodeForTokens(code: string): Promise<TokenResponse> {
+  public async getToken(code: string): Promise<Credentials> {
+    const { tokens } = await this.oAuth2Client.getToken(code);
+    this.oAuth2Client.setCredentials(tokens);
+    return tokens;
+  }
+
+  public async validateToken(accessToken: string): Promise<boolean> {
     try {
-      logger.debug('Exchanging code for tokens with code:', code);
-      const tokens = await this.googleAuth.getToken(code);
-
-      if (!tokens?.access_token) {
-        throw new Error('No access token received');
-      }
-
-      await this.storeTokens(tokens);
-      return this.formatTokenResponse(tokens);
+      const tokenInfo = await this.oAuth2Client.getTokenInfo(accessToken);
+      const expiryDate = tokenInfo.expiry_date || 0;
+      const now = Date.now();
+      return expiryDate - now > 5 * 60 * 1000; // Token valid if more than 5 minutes left
     } catch (error) {
-      logger.error('Error exchanging code for tokens:', error);
-      throw error;
+      logger.warn('Token validation failed, token may be expired:', error);
+      return false;
     }
   }
 
@@ -97,7 +113,7 @@ export class GoogleCalendarService {
     const tokens = await this.getStoredTokens();
     if (!tokens) throw new Error('No stored tokens found');
 
-    const isValid = await this.googleAuth.validateToken(tokens.access_token!);
+    const isValid = await this.validateToken(tokens.access_token!);
     if (isValid) return tokens.access_token!;
 
     if (tokens.refresh_token) {
@@ -111,23 +127,24 @@ export class GoogleCalendarService {
 
   public async refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
     try {
-      console.log("Starting refresh with token:", refreshToken);
-      
-      const credentials = await this.googleAuth.refreshAccessToken(refreshToken);
-      console.log("Received credentials:", credentials);
-      
+      this.oAuth2Client.setCredentials({ refresh_token: refreshToken });
+      const response = await this.oAuth2Client.refreshAccessToken();
+      const credentials = response.credentials;
+
       if (!credentials?.refresh_token) {
         credentials.refresh_token = refreshToken;
       }
 
       await this.storeTokens(credentials);
-      const response =  this.formatTokenResponse(credentials);
-      console.log(response);
-      return response;
+      return this.formatTokenResponse(credentials);
     } catch (error) {
       logger.error('Error refreshing access token:', error);
       throw new Error('Failed to refresh access token');
     }
+  }
+
+  public async revokeToken(accessToken: string): Promise<void> {
+    await this.oAuth2Client.revokeToken(accessToken);
   }
 
   private formatTokenResponse(tokens: Credentials): TokenResponse {
@@ -138,5 +155,22 @@ export class GoogleCalendarService {
       token_type: tokens.token_type || 'Bearer',
       expiry_date: tokens.expiry_date || 0,
     };
+  }
+
+  public async exchangeCodeForTokens(code: string): Promise<TokenResponse> {
+    try {
+      logger.debug('Exchanging code for tokens with code:', code);
+      const tokens = await this.getToken(code);
+
+      if (!tokens?.access_token) {
+        throw new Error('No access token received');
+      }
+
+      await this.storeTokens(tokens);
+      return this.formatTokenResponse(tokens);
+    } catch (error) {
+      logger.error('Error exchanging code for tokens:', error);
+      throw error;
+    }
   }
 }

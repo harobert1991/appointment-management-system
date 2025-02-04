@@ -24,7 +24,11 @@ const googleAuthConfig = {
 };
 
 const googleAuth = GoogleCalendarAuth.getInstance(googleAuthConfig);
-const googleCalendarService = GoogleCalendarService.getInstance(googleAuth);
+const googleCalendarService = GoogleCalendarService.getInstance({
+  clientId: googleAuthConfig.clientId,
+  clientSecret: googleAuthConfig.clientSecret,
+  redirectUri: googleAuthConfig.redirectUri
+});
 
 // Initialize and start the token refresh scheduler
 const tokenRefreshScheduler = TokenRefreshScheduler.initialize(googleCalendarService);
