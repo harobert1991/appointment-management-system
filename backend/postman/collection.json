@@ -30,13 +30,159 @@
             "description": "Create a new appointment event",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"example\",\n  \"description\": \"example\",\n  \"appointmentType\": \"in_person\",\n  \"startDateTime\": \"2025-02-04T19:48:24.561Z\",\n  \"endDateTime\": \"2025-02-04T19:48:24.561Z\",\n  \"location\": \"example\",\n  \"participants\": [\n    {\n      \"userId\": \"example\",\n      \"role\": \"provider\",\n      \"name\": \"example\",\n      \"email\": \"example@email.com\",\n      \"phone\": \"example\"\n    }\n  ],\n  \"providerId\": \"example\",\n  \"reminderSettings\": [\n    {\n      \"type\": \"email\",\n      \"timeBeforeEvent\": 5,\n      \"isEnabled\": true\n    }\n  ]\n}",
+              "raw": "{\n  \"title\": \"example\",\n  \"description\": \"example\",\n  \"appointmentType\": \"in_person\",\n  \"startDateTime\": \"2025-02-05T22:31:27.618Z\",\n  \"endDateTime\": \"2025-02-05T22:31:27.618Z\",\n  \"location\": \"example\",\n  \"participants\": [\n    {\n      \"userId\": \"example\",\n      \"role\": \"provider\",\n      \"name\": \"example\",\n      \"email\": \"example@email.com\",\n      \"phone\": \"example\"\n    }\n  ],\n  \"providerId\": \"example\",\n  \"reminderSettings\": [\n    {\n      \"type\": \"email\",\n      \"timeBeforeEvent\": 5,\n      \"isEnabled\": true\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "appointment-types",
+      "item": [
+        {
+          "name": "Create a new appointment type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointment-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointment-types"
+              ]
+            },
+            "description": "Create a new appointment type",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"example\",\n  \"duration\": 0,\n  \"description\": \"example\",\n  \"bufferTimeBefore\": 0,\n  \"bufferTimeAfter\": 0,\n  \"price\": 0,\n  \"category\": \"example\",\n  \"isActive\": true,\n  \"locations\": null,\n  \"resourcesRequired\": null,\n  \"tags\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get appointment type by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointment-types/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointment-types",
+                ":id"
+              ]
+            },
+            "description": "Get appointment type by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Get all appointment types with optional filters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointment-types",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointment-types"
+              ]
+            },
+            "description": "Get all appointment types with optional filters"
+          },
+          "response": []
+        },
+        {
+          "name": "Update an appointment type",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointment-types/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointment-types",
+                ":id"
+              ]
+            },
+            "description": "Update an appointment type",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"example\",\n  \"duration\": 0,\n  \"description\": \"example\",\n  \"bufferTimeBefore\": 0,\n  \"bufferTimeAfter\": 0,\n  \"price\": 0,\n  \"category\": \"example\",\n  \"isActive\": true,\n  \"locations\": null,\n  \"resourcesRequired\": null,\n  \"tags\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete an appointment type",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/appointment-types/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "appointment-types",
+                ":id"
+              ]
+            },
+            "description": "Delete an appointment type"
           },
           "response": []
         }

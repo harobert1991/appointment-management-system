@@ -1,5 +1,11 @@
 import { Schema, model, Document } from 'mongoose';
-import { format, toZonedTime } from 'date-fns-tz';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+// Initialize dayjs plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // Get timezone from env or default to Paris
 const TIMEZONE = process.env.TIMEZONE || 'Europe/Paris';
@@ -137,12 +143,10 @@ const eventSchema = new Schema<IEvent>({
     transform: function(doc, ret) {
       // Convert UTC dates to Paris timezone
       if (ret.startDateTime) {
-        const zonedDate = format(new Date(ret.startDateTime), "yyyy-MM-dd'T'HH:mm:ssXXX", { timeZone: TIMEZONE });
-        ret.startDateTime = zonedDate;
+        ret.startDateTime = dayjs(ret.startDateTime).tz(TIMEZONE).format();
       }
       if (ret.endDateTime) {
-        const zonedDate = format(new Date(ret.endDateTime), "yyyy-MM-dd'T'HH:mm:ssXXX", { timeZone: TIMEZONE });
-        ret.endDateTime = zonedDate;
+        ret.endDateTime = dayjs(ret.endDateTime).tz(TIMEZONE).format();
       }
       return ret;
     }
@@ -152,21 +156,18 @@ const eventSchema = new Schema<IEvent>({
 // Pre-save middleware to convert Paris time to UTC
 eventSchema.pre('save', function(next) {
   if (this.startDateTime) {
-    this.startDateTime = toZonedTime(this.startDateTime, TIMEZONE);
+    this.startDateTime = dayjs.tz(this.startDateTime, TIMEZONE).toDate();
   }
   if (this.endDateTime) {
-    this.endDateTime = toZonedTime(this.endDateTime, TIMEZONE);
+    this.endDateTime = dayjs.tz(this.endDateTime, TIMEZONE).toDate();
   }
   
   if (this.isAllDay) {
-    const startDate = toZonedTime(this.startDateTime, TIMEZONE);
-    const endDate = toZonedTime(this.endDateTime, TIMEZONE);
+    const startDate = dayjs.tz(this.startDateTime, TIMEZONE);
+    const endDate = dayjs.tz(this.endDateTime, TIMEZONE);
     
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
-    
-    this.startDateTime = toZonedTime(startDate, TIMEZONE);
-    this.endDateTime = toZonedTime(endDate, TIMEZONE);
+    this.startDateTime = startDate.startOf('day').toDate();
+    this.endDateTime = endDate.endOf('day').toDate();
   }
   
   next();

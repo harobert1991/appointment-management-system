@@ -68,8 +68,6 @@ describe('AppointmentEventService - Creation', () => {
     // Act
     const createdAppointment = await appointmentEventService.createAppointment(validAppointmentData);
 
-    console.log('WWHHHAATTT TTTHHHEEE FFFUUUCCCKKKK  createdAppointment', createdAppointment)
-
     // Assert
     expect(createdAppointment).toBeDefined();
     expect(createdAppointment.status).toBe(AppointmentStatus.SCHEDULED);
@@ -343,8 +341,6 @@ describe('AppointmentEventService - Creation', () => {
           return Promise.resolve([]);
         });
 
-      console.log('existingAppointments', existingAppointments);
-
       const newAppointmentData = {
         title: 'Test Appointment',
         startDateTime: new Date('2024-03-20T11:00:00Z'),
@@ -361,8 +357,6 @@ describe('AppointmentEventService - Creation', () => {
         ],
         location: 'Office 123'
       };
-
-      console.log('newAppointmentData', newAppointmentData);
 
       // Act
       const result = await appointmentEventService.createAppointment(newAppointmentData);

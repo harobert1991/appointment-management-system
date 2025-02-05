@@ -4,12 +4,21 @@ const config: Config.InitialOptions = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
-  testMatch: ['**/__tests__/**/*.test.ts'],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
+  transform: {
+    '^.+\\.tsx?$': 'ts-jest'
   },
-  globalTeardown: '<rootDir>/src/__tests__/teardown.ts',
-  testTimeout: 10000,  // Default timeout for all tests
+  setupFiles: ['<rootDir>/src/test/setupTimezone.ts'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  verbose: true,
+  testMatch: ['**/__tests__/**/*.test.ts'],
+  collectCoverage: false,
+  collectCoverageFrom: [
+    'src/**/*.{js,ts}',
+    '!src/**/*.d.ts',
+    '!src/**/*.types.ts',
+    '!src/**/index.ts',
+    '!src/**/*.schema.ts'
+  ]
 };
 
 export default config; 

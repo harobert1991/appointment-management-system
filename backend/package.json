@@ -11,12 +11,12 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "ngrok": "ngrok http --domain=massive-flowing-baboon.ngrok-free.app http://localhost:3000",
-
     "test:appointment-type": "jest src/modules/appointmentType/__tests__",
-    "test:appointment-event": "jest src/modules/appointmentEvent/__tests__"
+    "test:appointment-event": "jest src/modules/appointmentEvent/__tests__",
+    "test:provider": "jest src/modules/provider/__tests__"
   },
   "dependencies": {
-    "date-fns-tz": "^3.2.0",
+    "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^7.1.5",

@@ -19,12 +19,8 @@ export class AppointmentEventService extends DatabaseService<IAppointmentEvent> 
     if (typeof appointmentData.endDateTime === 'string') {
       appointmentData.endDateTime = new Date(appointmentData.endDateTime);
     }
-
-    console.log('hell  world 0000')
     // Validate required fields
     this.validateRequiredFields(appointmentData);
-
-    console.log('hell  world 1111')
 
     // Check for scheduling conflicts
     await this.checkForConflicts(
@@ -37,12 +33,9 @@ export class AppointmentEventService extends DatabaseService<IAppointmentEvent> 
     // Set initial status
     appointmentData.status = AppointmentStatus.SCHEDULED;
 
-    console.log('hell  world 2222456789')
-
     // Create the appointment
     const appointment = await this.create(appointmentData);
     logger.info(`Created appointment with ID: ${appointment._id}`);
-    console.log('hell  world 222245678910', appointment)
     return appointment;
   }
 
@@ -199,8 +192,6 @@ export class AppointmentEventService extends DatabaseService<IAppointmentEvent> 
       status: { $nin: [AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED] }
     };
 
-    console.log('hell  world')
-
     // Exclude current appointment when updating
     if (excludeAppointmentId) {
       query._id = { $ne: excludeAppointmentId };
@@ -217,8 +208,6 @@ export class AppointmentEventService extends DatabaseService<IAppointmentEvent> 
         throw new Error('Provider has a scheduling conflict');
       }
     }
-
-    console.log('hell  world 2222')
 
     // Check participant conflicts
     if (participantIds.length > 0) {

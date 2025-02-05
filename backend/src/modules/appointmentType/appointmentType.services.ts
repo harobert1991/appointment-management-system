@@ -65,8 +65,6 @@ export class AppointmentTypeService extends DatabaseService<IAppointmentType> {
       { $set: { appointmentType: null } }
     );
 
-    console.log(`${updateResult.modifiedCount} appointments affected by deletion`);
-
     // Then delete the appointment type
     return await this.delete({ _id: id });
   }

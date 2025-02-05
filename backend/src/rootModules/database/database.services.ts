@@ -28,4 +28,8 @@ export class DatabaseService<T extends Document> {
     const count = await this.model.countDocuments(filter);
     return count > 0;
   }
+
+  async findById(id: string): Promise<T | null> {
+    return await this.model.findById(id);
+  }
 } 
