@@ -10,7 +10,10 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "ngrok": "ngrok http --domain=massive-flowing-baboon.ngrok-free.app http://localhost:3000"
+    "ngrok": "ngrok http --domain=massive-flowing-baboon.ngrok-free.app http://localhost:3000",
+
+    "test:appointment-type": "jest src/modules/appointmentType/__tests__",
+    "test:appointment-event": "jest src/modules/appointmentEvent/__tests__"
   },
   "dependencies": {
     "date-fns-tz": "^3.2.0",
