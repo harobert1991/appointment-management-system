@@ -77,19 +77,34 @@ describe('AppointmentEventController', () => {
 
       // Verify response
       expect(mockStatus).toHaveBeenCalledWith(201);
-      expect(mockJson).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(mockJson).toHaveBeenCalledWith({
+        success: true,
+        data: expect.objectContaining({
           id: 'test-appointment-id',
           title: 'Test Appointment',
           description: 'Test Description',
           appointmentType: 'CONSULTATION'
         })
-      );
+      });
 
       // Verify service calls
       expect(AppointmentEventService.prototype.createAppointment).toHaveBeenCalledWith(
         expect.objectContaining(mockReq.body)
       );
+    });
+
+    it('should handle errors and return 400 status', async () => {
+      const error = new Error('Validation error');
+      (AppointmentEventService.prototype.createAppointment as jest.Mock).mockRejectedValue(error);
+
+      await controller.createAppointment(mockReq as Request, mockRes as Response);
+
+      expect(mockStatus).toHaveBeenCalledWith(400);
+      expect(mockJson).toHaveBeenCalledWith({
+        success: false,
+        error: 'Failed to create appointment',
+        details: 'Validation error'
+      });
     });
   });
 });
@@ -151,22 +166,62 @@ describe('AppointmentEventController - Update', () => {
       body: updateData
     };
 
-    (AppointmentEventService.prototype.updateAppointment as jest.Mock).mockResolvedValue({
-      ...updatedAppointment
-    });
-
-    // mockService.updateAppointment.mockResolvedValue(updatedAppointment);
+    (AppointmentEventService.prototype.updateAppointment as jest.Mock).mockResolvedValue(updatedAppointment);
 
     // Act
     await controller.updateAppointment(mockRequest as Request, mockResponse as Response);
 
     // Assert
-    // Verify service calls
     expect(AppointmentEventService.prototype.updateAppointment).toHaveBeenCalledWith(
-      appointmentId,  // First argument: id
-      updateData      // Second argument: update data
+      appointmentId,
+      updateData
     );
-    expect(mockStatus).not.toHaveBeenCalled(); // Should use default 200 status
-    expect(mockJson).toHaveBeenCalledWith(updatedAppointment);
+    expect(mockJson).toHaveBeenCalledWith({
+      success: true,
+      data: updatedAppointment
+    });
+  });
+
+  it('should handle not found appointment', async () => {
+    // Arrange
+    const appointmentId = new mongoose.Types.ObjectId().toString();
+    mockRequest = {
+      params: { id: appointmentId },
+      body: { title: 'Updated Appointment' }
+    };
+
+    (AppointmentEventService.prototype.updateAppointment as jest.Mock).mockResolvedValue(null);
+
+    // Act
+    await controller.updateAppointment(mockRequest as Request, mockResponse as Response);
+
+    // Assert
+    expect(mockStatus).toHaveBeenCalledWith(404);
+    expect(mockJson).toHaveBeenCalledWith({
+      success: false,
+      error: 'Appointment not found'
+    });
+  });
+
+  it('should handle update errors', async () => {
+    // Arrange
+    const error = new Error('Update failed');
+    mockRequest = {
+      params: { id: 'invalid-id' },
+      body: { title: 'Updated Appointment' }
+    };
+
+    (AppointmentEventService.prototype.updateAppointment as jest.Mock).mockRejectedValue(error);
+
+    // Act
+    await controller.updateAppointment(mockRequest as Request, mockResponse as Response);
+
+    // Assert
+    expect(mockStatus).toHaveBeenCalledWith(400);
+    expect(mockJson).toHaveBeenCalledWith({
+      success: false,
+      error: 'Failed to update appointment',
+      details: 'Update failed'
+    });
   });
 }); 

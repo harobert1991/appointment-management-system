@@ -29,7 +29,8 @@ const appointmentTypeSchema = new Schema({
     type: String,
     required: [true, 'Name is required'],
     trim: true,
-    maxlength: [100, 'Name cannot exceed 100 characters']
+    maxlength: [100, 'Name cannot exceed 100 characters'],
+    unique: true
   },
   duration: {
     type: Number,

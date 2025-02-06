@@ -199,6 +199,33 @@ export const routes: RouteConfig[] = [
   },
   {
     method: 'delete',
+    path: '/appointment-types/cleanup',
+    handler: controller.cleanupAppointmentTypes,
+    description: 'Delete all appointment types (for testing purposes)',
+    input: {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    },
+    errorResponses: [
+      {
+        status: 403,
+        description: 'Forbidden - Not available in production',
+        body: {
+          error: 'Operation not allowed'
+        }
+      },
+      {
+        status: 500,
+        description: 'Internal Server Error',
+        body: {
+          error: 'Failed to cleanup appointment types'
+        }
+      }
+    ]
+  },
+  {
+    method: 'delete',
     path: '/appointment-types/:id',
     handler: controller.deleteAppointmentType,
     description: 'Delete an appointment type',

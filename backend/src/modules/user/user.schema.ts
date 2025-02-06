@@ -6,22 +6,43 @@ export enum UserRole {
   CLIENT = 'client'
 }
 
+// Replace Zod schemas with interfaces
+export interface IAddress {
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
+export interface IUserInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  address?: IAddress;
+  role: UserRole;
+}
+
 export interface IUser extends Document {
   firstName: string;
   lastName: string;
-  name: string;  // Regular field now
+  name: string;
   email: string;
   phone?: string;
-  address?: {
-    street: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-  };
-  role: UserRole;  // Add role field
+  address?: IAddress;
+  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Helper functions for validation
+export function validateEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+export function validatePhone(phone: string): boolean {
+  return /^\+?[1-9]\d{1,14}$/.test(phone);
 }
 
 const userSchema = new Schema<IUser>({
@@ -48,7 +69,9 @@ const userSchema = new Schema<IUser>({
   },
   phone: {
     type: String,
-    trim: true
+    trim: true,
+    unique: true,  // Add unique constraint
+    sparse: true   // This allows the field to be optional while still maintaining uniqueness
   },
   address: {
     street: {

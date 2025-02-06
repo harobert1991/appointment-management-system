@@ -1,6 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { IUser } from '../user/user.schema';
-import { z } from 'zod';
 
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
@@ -31,7 +30,7 @@ export interface IAvailability {
 
 export interface IProvider extends Document {
   userId: string;
-  servicesOffered: string[];
+  servicesOffered: Schema.Types.ObjectId[];
   availability: IAvailability[];
   exceptions: Date[];
   maxDailyAppointments?: number;
@@ -191,44 +190,75 @@ providerSchema.index({ 'availability.dayOfWeek': 1 });
 
 export const Provider = mongoose.model<IProvider>('Provider', providerSchema);
 
-export const checkAvailabilitySchema = z.object({
-  params: z.object({
-    providerId: z.string()
-  }),
-  query: z.object({
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    duration: z.string().regex(/^\d+$/).transform(Number),
-    locationId: z.string().optional()
-  })
-});
+// Replace Zod schemas with interfaces
+export interface CheckAvailabilityParams {
+  providerId: string;
+}
 
-export const updateAvailabilitySchema = z.object({
-  params: z.object({
-    providerId: z.string()
-  }),
-  body: z.object({
-    availability: z.array(z.object({
-      dayOfWeek: z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']),
-      timeSlots: z.array(z.object({
-        startTime: z.string().regex(/^\d{2}:\d{2}$/),
-        endTime: z.string().regex(/^\d{2}:\d{2}$/),
-        requiresTravelTime: z.boolean(),
-        spansOvernight: z.boolean(),
-        locationId: z.string().optional(),
-        travelBuffer: z.number().optional()
-      })),
-      isRecurring: z.boolean(),
-      specificDates: z.array(z.object({
-        date: z.date(),
-        timeSlots: z.array(z.object({
-          startTime: z.string().regex(/^\d{2}:\d{2}$/),
-          endTime: z.string().regex(/^\d{2}:\d{2}$/),
-          requiresTravelTime: z.boolean(),
-          spansOvernight: z.boolean(),
-          locationId: z.string().optional(),
-          travelBuffer: z.number().optional()
-        }))
-      })).optional()
-    }))
-  })
-}); 
+export interface CheckAvailabilityQuery {
+  date: string; // Format: YYYY-MM-DD
+  duration: number;
+  locationId?: string;
+}
+
+export interface TimeSlotUpdate {
+  startTime: string; // Format: HH:mm
+  endTime: string; // Format: HH:mm
+  requiresTravelTime: boolean;
+  spansOvernight: boolean;
+  locationId?: string;
+  travelBuffer?: number;
+}
+
+export interface SpecificDateUpdate {
+  date: Date;
+  timeSlots: TimeSlotUpdate[];
+}
+
+export interface AvailabilityUpdate {
+  dayOfWeek: DayOfWeek;
+  timeSlots: TimeSlotUpdate[];
+  isRecurring: boolean;
+  specificDates?: SpecificDateUpdate[];
+}
+
+export interface UpdateAvailabilityParams {
+  providerId: string;
+}
+
+export interface UpdateAvailabilityBody {
+  availability: AvailabilityUpdate[];
+}
+
+// Helper functions for validation
+export function validateTimeFormat(time: string): boolean {
+  return /^\d{2}:\d{2}$/.test(time);
+}
+
+export function validateDateFormat(date: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date);
+}
+
+// Add this interface for the create provider request
+export interface ICreateProviderRequest {
+  servicesOffered: Schema.Types.ObjectId[];
+  availability: {
+    dayOfWeek: DayOfWeek;
+    timeSlots: {
+      startTime: string;
+      endTime: string;
+      requiresTravelTime: boolean;
+      spansOvernight: boolean;
+      locationId?: string;
+      travelBuffer?: number;
+    }[];
+    isRecurring: boolean;
+  }[];
+  user: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    password: string;
+  };
+} 

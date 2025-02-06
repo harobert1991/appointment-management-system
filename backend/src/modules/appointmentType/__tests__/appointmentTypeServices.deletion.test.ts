@@ -1,6 +1,15 @@
 import { AppointmentTypeService } from '../appointmentType.services';
 import { IAppointmentType } from '../appointmentType.schema';
 import mongoose from 'mongoose';
+import { logger } from '../../../utils';
+
+// At the top with other jest.mock calls
+jest.mock('../../../utils', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn()
+  }
+}));
 
 describe('AppointmentTypeService - Deletion', () => {
   let appointmentTypeService: AppointmentTypeService;
@@ -167,7 +176,6 @@ describe('AppointmentTypeService - Deletion', () => {
     it('should log affected appointments during deletion', async () => {
       // Arrange
       const appointmentId = mockAppointmentType._id!.toString();
-      const mockLogger = jest.spyOn(console, 'log').mockImplementation();
       
       // Mock AppointmentEvent model's updateMany to return affected count
       const mockUpdateMany = jest.fn().mockResolvedValue({ modifiedCount: 5 });
@@ -184,7 +192,7 @@ describe('AppointmentTypeService - Deletion', () => {
       await appointmentTypeService.deleteAppointmentType(appointmentId);
 
       // Assert
-      expect(mockLogger).toHaveBeenCalledWith(
+      expect(logger.info).toHaveBeenCalledWith(
         expect.stringContaining('5 appointments affected by deletion')
       );
     });

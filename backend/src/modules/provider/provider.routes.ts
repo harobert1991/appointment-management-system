@@ -1,179 +1,80 @@
-import { Router } from 'express';
 import { ProviderController } from './provider.controller';
-import { validateRequest } from '../../middleware/validateRequest';
-import { checkAvailabilitySchema, updateAvailabilitySchema } from './provider.schema';
+import { RouteConfig } from '../../utils/routeLoader';
 
 const controller = new ProviderController();
 
-interface RouteConfig {
-  method: string;
-  path: string;
-  handler: Function;
-  description: string;
-  input: {
-    headers: Record<string, string>;
-    body?: Record<string, any>;
-    params?: Record<string, string>;
-    query?: Record<string, string>;
-  };
-  middleware?: Function[];
-  errorResponses: Array<{
-    status: number;
-    description: string;
-    body: Record<string, any>;
-  }>;
-}
-
 export const routes: RouteConfig[] = [
   {
-    method: 'get',
-    path: '/:providerId/availability',
-    handler: controller.getAvailability,
-    description: 'Get provider availability for a specific date and duration',
+    method: 'post',
+    path: '/providers',
+    handler: controller.createProvider,
+    description: 'Create a new provider with associated user',
     input: {
       headers: {
         'Content-Type': 'application/json'
-      },
-      params: {
-        providerId: 'string'
-      },
-      query: {
-        date: 'YYYY-MM-DD formatted date string',
-        duration: 'number in minutes',
-        locationId: 'optional location ID string'
-      }
-    },
-    middleware: [validateRequest(checkAvailabilitySchema)],
-    errorResponses: [
-      {
-        status: 400,
-        description: 'Bad Request - Invalid Parameters',
-        body: {
-          error: 'string'
-        }
-      },
-      {
-        status: 404,
-        description: 'Provider Not Found',
-        body: {
-          error: 'Provider not found'
-        }
-      }
-    ]
-  },
-  {
-    method: 'get',
-    path: '/:providerId/availability/:date',
-    handler: controller.getSpecificDateAvailability,
-    description: 'Get provider availability for a specific date',
-    input: {
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      params: {
-        providerId: 'string',
-        date: 'YYYY-MM-DD formatted date string'
-      }
-    },
-    errorResponses: [
-      {
-        status: 400,
-        description: 'Bad Request - Invalid Date Format',
-        body: {
-          error: 'string'
-        }
-      },
-      {
-        status: 404,
-        description: 'Provider Not Found',
-        body: {
-          error: 'Provider not found'
-        }
-      }
-    ]
-  },
-  {
-    method: 'put',
-    path: '/:providerId/availability',
-    handler: controller.updateAvailability,
-    description: 'Update provider availability',
-    input: {
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      params: {
-        providerId: 'string'
       },
       body: {
-        availability: 'Array of availability objects'
-      }
-    },
-    middleware: [validateRequest(updateAvailabilitySchema)],
-    errorResponses: [
-      {
-        status: 400,
-        description: 'Bad Request - Invalid Availability Format',
-        body: {
-          error: 'string'
+        servicesOffered: { type: 'array', required: true },
+        availability: {
+          type: 'array',
+          required: false,
+          properties: {
+            dayOfWeek: { type: 'string', required: true },
+            timeSlots: {
+              type: 'array',
+              required: true,
+              properties: {
+                startTime: { type: 'string', required: true },
+                endTime: { type: 'string', required: true },
+                requiresTravelTime: { type: 'boolean', required: true },
+                spansOvernight: { type: 'boolean', required: true },
+                locationId: { type: 'string', required: false },
+                travelBuffer: { type: 'number', required: false }
+              }
+            }
+          }
+        },
+        user: {
+          type: 'object',
+          required: true,
+          properties: {
+            email: { type: 'string', required: true },
+            firstName: { type: 'string', required: true },
+            lastName: { type: 'string', required: true },
+            phone: { 
+              type: 'string', 
+              required: false
+            },
+            password: { type: 'string', required: true }
+          }
         }
-      },
-      {
-        status: 400,
-        description: 'Bad Request - Scheduling Conflict',
-        body: {
-          error: 'Cannot update availability due to existing appointments'
-        }
-      },
-      {
-        status: 404,
-        description: 'Provider Not Found',
-        body: {
-          error: 'Provider not found'
-        }
-      }
-    ]
-  },
-  {
-    method: 'get',
-    path: '/:providerId/time-slots',
-    handler: controller.getTimeSlots,
-    description: 'Get available time slots for a specific date, duration and location',
-    input: {
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      params: {
-        providerId: 'string'
-      },
-      query: {
-        date: 'YYYY-MM-DD formatted date string',
-        duration: 'number in minutes',
-        locationId: 'optional location ID string'
       }
     },
     errorResponses: [
       {
         status: 400,
-        description: 'Bad Request - Invalid Parameters',
+        description: 'Bad Request - Invalid Data',
         body: {
-          error: 'string'
+          error: 'string',
+          details: 'array'
         }
       },
       {
-        status: 404,
-        description: 'Provider Not Found',
+        status: 409,
+        description: 'Conflict - Email or Phone Already Exists',
         body: {
-          error: 'Provider not found'
+          error: 'string' // Will be either "email already exists" or "phone already exists"
+        }
+      },
+      {
+        status: 500,
+        description: 'Internal Server Error',
+        body: {
+          error: 'Failed to create provider',
+          message: 'string'
         }
       }
     ]
   }
 ];
 
-// Create router and register routes
-export const providerRouter = Router();
-
-routes.forEach(route => {
-  const { method, path, handler, middleware = [] } = route;
-  (providerRouter as any)[method](path, ...middleware, handler);
-}); 

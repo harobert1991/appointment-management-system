@@ -1,6 +1,7 @@
 import { AppointmentTypeService } from '../appointmentType.services';
 import { IAppointmentType } from '../appointmentType.schema';
 import mongoose from 'mongoose';
+import { config } from '../../../config';
 
 describe('AppointmentTypeService - Update', () => {
   let appointmentTypeService: AppointmentTypeService;
@@ -53,6 +54,12 @@ describe('AppointmentTypeService - Update', () => {
       tags: ['premium', 'extended']
     };
 
+    // Mock findOne to first return the existing appointment
+    // and then return null for the name uniqueness check
+    jest.spyOn(appointmentTypeService as any, 'findOne')
+      .mockImplementationOnce(() => Promise.resolve(mockAppointmentType)) // For initial appointment check
+      .mockImplementationOnce(() => Promise.resolve(null)); // For name uniqueness check
+
     // Act
     const updatedAppointmentType = await appointmentTypeService.updateAppointmentType(
       appointmentId,
@@ -76,7 +83,11 @@ describe('AppointmentTypeService - Update', () => {
     // Verify service calls
     expect(appointmentTypeService['findOne'])
       .toHaveBeenCalledWith({ _id: appointmentId });
-    
+    expect(appointmentTypeService['findOne'])
+      .toHaveBeenCalledWith({ 
+        name: updateData.name,
+        _id: { $ne: appointmentId }
+      });
     expect(appointmentTypeService['update'])
       .toHaveBeenCalledWith(
         { _id: appointmentId },
@@ -370,6 +381,137 @@ describe('AppointmentTypeService - Update', () => {
       // Verify service calls
       expect(appointmentTypeService['update'])
         .toHaveBeenCalledWith({ _id: appointmentId }, updateData);
+    });
+  });
+
+  describe('name uniqueness validation', () => {
+    it('should reject update with duplicate name', async () => {
+      // Arrange
+      const appointmentId = mockAppointmentType._id!.toString();
+      const existingName = 'Existing Consultation';
+      
+      // Mock findOne to first return the appointment being updated
+      jest.spyOn(appointmentTypeService as any, 'findOne')
+        .mockImplementationOnce(() => Promise.resolve(mockAppointmentType))
+        // Then return a different appointment with the target name
+        .mockImplementationOnce(() => Promise.resolve({ 
+          _id: new mongoose.Types.ObjectId(),
+          name: existingName 
+        }));
+
+      const updateData = {
+        name: existingName
+      };
+
+      // Act & Assert
+      await expect(appointmentTypeService.updateAppointmentType(
+        appointmentId,
+        updateData
+      )).rejects.toThrow(`Appointment type with name "${existingName}" already exists`);
+
+      // Verify findOne was called correctly
+      expect(appointmentTypeService['findOne'])
+        .toHaveBeenCalledWith({ _id: appointmentId });
+      expect(appointmentTypeService['findOne'])
+        .toHaveBeenCalledWith({ 
+          name: existingName,
+          _id: { $ne: appointmentId }
+        });
+    });
+
+    it('should allow update with same name as current', async () => {
+      // Arrange
+      const appointmentId = mockAppointmentType._id!.toString();
+      const currentName = mockAppointmentType.name!;
+      
+      const updateData = {
+        name: currentName,
+        duration: 45 // Change something else
+      };
+
+      // Act
+      const updatedAppointment = await appointmentTypeService.updateAppointmentType(
+        appointmentId,
+        updateData
+      );
+
+      // Assert
+      expect(updatedAppointment).toBeDefined();
+      expect(updatedAppointment?.name).toBe(currentName);
+      expect(updatedAppointment?.duration).toBe(45);
+    });
+
+    it('should allow update with new unique name', async () => {
+      // Arrange
+      const appointmentId = mockAppointmentType._id!.toString();
+      const newUniqueName = 'New Unique Name';
+      
+      // Mock findOne to first return the appointment being updated
+      jest.spyOn(appointmentTypeService as any, 'findOne')
+        .mockImplementationOnce(() => Promise.resolve(mockAppointmentType))
+        // Then return null when checking for name uniqueness
+        .mockImplementationOnce(() => Promise.resolve(null));
+
+      const updateData = {
+        name: newUniqueName
+      };
+
+      // Act
+      const updatedAppointment = await appointmentTypeService.updateAppointmentType(
+        appointmentId,
+        updateData
+      );
+
+      // Assert
+      expect(updatedAppointment).toBeDefined();
+      expect(updatedAppointment?.name).toBe(newUniqueName);
+
+      // Verify findOne was called correctly
+      expect(appointmentTypeService['findOne'])
+        .toHaveBeenCalledWith({ _id: appointmentId });
+      expect(appointmentTypeService['findOne'])
+        .toHaveBeenCalledWith({ 
+          name: newUniqueName,
+          _id: { $ne: appointmentId }
+        });
+    });
+  });
+
+  describe('duration validation', () => {
+    it('should reject update with duration exceeding max limit', async () => {
+      // Arrange
+      const appointmentId = mockAppointmentType._id!.toString();
+      const invalidData = {
+        duration: config.appointment.maxDurationMinutes + 1
+      };
+
+      // Act & Assert
+      await expect(appointmentTypeService.updateAppointmentType(
+        appointmentId,
+        invalidData
+      )).rejects.toThrow(`Duration cannot exceed ${config.appointment.maxDurationMinutes} minutes`);
+    });
+
+    it('should allow update with duration equal to max limit', async () => {
+      // Arrange
+      const appointmentId = mockAppointmentType._id!.toString();
+      const validData = {
+        duration: config.appointment.maxDurationMinutes
+      };
+
+      // Mock findOne to return existing appointment
+      jest.spyOn(appointmentTypeService as any, 'findOne')
+        .mockResolvedValue(mockAppointmentType);
+
+      // Act
+      const updatedAppointment = await appointmentTypeService.updateAppointmentType(
+        appointmentId,
+        validData
+      );
+
+      // Assert
+      expect(updatedAppointment).toBeDefined();
+      expect(updatedAppointment?.duration).toBe(config.appointment.maxDurationMinutes);
     });
   });
 }); 

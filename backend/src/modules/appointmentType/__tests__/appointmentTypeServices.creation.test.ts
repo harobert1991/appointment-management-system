@@ -1,6 +1,7 @@
 import { AppointmentTypeService } from '../appointmentType.services';
 import { IAppointmentType } from '../appointmentType.schema';
 import mongoose from 'mongoose';
+import { config } from '../../../config';
 
 describe('AppointmentTypeService - Creation', () => {
   let appointmentTypeService: AppointmentTypeService;
@@ -9,15 +10,21 @@ describe('AppointmentTypeService - Creation', () => {
     jest.clearAllMocks();
     appointmentTypeService = new AppointmentTypeService();
 
-    // Mock the create method
-    jest.spyOn(appointmentTypeService as any, 'create').mockImplementation(
-      (...args: unknown[]) => Promise.resolve({
+    // Mock both findOne and create methods
+    jest.spyOn(appointmentTypeService as any, 'findOne')
+      .mockResolvedValue(null); // Default to no existing appointment type
+
+    jest.spyOn(appointmentTypeService as any, 'create')
+      .mockImplementation((...args: unknown[]) => Promise.resolve({
         _id: new mongoose.Types.ObjectId(),
-        ...(args[0] as Partial<IAppointmentType>),  // Cast the first argument
+        ...(args[0] as Partial<IAppointmentType>),
         createdAt: new Date(),
         updatedAt: new Date()
-      } as IAppointmentType)
-    );
+      } as IAppointmentType));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('should create an appointment type with all required fields', async () => {
@@ -570,6 +577,91 @@ describe('AppointmentTypeService - Creation', () => {
       expect(createdAppointmentType).toBeDefined();
       expect(createdAppointmentType.locations![0].type).toBe('virtual');
       expect(createdAppointmentType.locations![0].coordinates).toBeUndefined();
+    });
+  });
+
+  describe('name uniqueness validation', () => {
+    it('should reject creation with duplicate name', async () => {
+      // Arrange
+      const existingName = 'Regular Consultation';
+      
+      // Override the default findOne mock for this specific test
+      jest.spyOn(appointmentTypeService as any, 'findOne')
+        .mockReset()
+        .mockResolvedValue({ name: existingName });
+
+      const duplicateData = {
+        name: existingName,
+        duration: 30,
+        isActive: true
+      };
+
+      // Act & Assert
+      await expect(appointmentTypeService.createAppointmentType(duplicateData))
+        .rejects
+        .toThrow(`Appointment type with name "${existingName}" already exists`);
+
+      // Verify findOne was called with correct parameters
+      expect(appointmentTypeService['findOne'])
+        .toHaveBeenCalledWith({ name: existingName });
+    });
+
+    it('should allow creation with unique name', async () => {
+      // Arrange
+      const uniqueName = 'Unique Consultation';
+      
+      // Mock findOne to simulate no existing appointment type
+      jest.spyOn(appointmentTypeService as any, 'findOne')
+        .mockResolvedValue(null);
+
+      const validData = {
+        name: uniqueName,
+        duration: 30,
+        isActive: true
+      };
+
+      // Act
+      const createdAppointmentType = await appointmentTypeService.createAppointmentType(validData);
+
+      // Assert
+      expect(createdAppointmentType).toBeDefined();
+      expect(createdAppointmentType.name).toBe(uniqueName);
+
+      // Verify findOne was called with correct parameters
+      expect(appointmentTypeService['findOne'])
+        .toHaveBeenCalledWith({ name: uniqueName });
+    });
+  });
+
+  describe('duration validation', () => {
+    it('should reject creation with duration exceeding max limit', async () => {
+      // Arrange
+      const invalidData = {
+        name: 'Long Appointment',
+        duration: config.appointment.maxDurationMinutes + 1,
+        isActive: true
+      };
+
+      // Act & Assert
+      await expect(appointmentTypeService.createAppointmentType(invalidData))
+        .rejects
+        .toThrow(`Duration cannot exceed ${config.appointment.maxDurationMinutes} minutes`);
+    });
+
+    it('should allow creation with duration equal to max limit', async () => {
+      // Arrange
+      const validData = {
+        name: 'Maximum Duration Appointment',
+        duration: config.appointment.maxDurationMinutes,
+        isActive: true
+      };
+
+      // Act
+      const createdAppointmentType = await appointmentTypeService.createAppointmentType(validData);
+
+      // Assert
+      expect(createdAppointmentType).toBeDefined();
+      expect(createdAppointmentType.duration).toBe(config.appointment.maxDurationMinutes);
     });
   });
 }); 

@@ -15,7 +15,12 @@ export class UserController {
       res.status(201).json(user);
     } catch (error: any) {
       if (error.code === 11000) {
-        res.status(400).json({ error: 'Email already exists' });
+        const field = Object.keys(error.keyPattern)[0];
+        res.status(400).json({ error: `${field} already exists` });
+        return;
+      }
+      if (error.message.includes('Validation error')) {
+        res.status(400).json({ error: error.message });
         return;
       }
       res.status(500).json({ error: 'Failed to create user' });
@@ -43,7 +48,16 @@ export class UserController {
         return;
       }
       res.json(user);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 11000) {
+        const field = Object.keys(error.keyPattern)[0];
+        res.status(400).json({ error: `${field} already exists` });
+        return;
+      }
+      if (error.message.includes('Validation error')) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
       res.status(500).json({ error: 'Failed to update user' });
     }
   };

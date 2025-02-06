@@ -16,11 +16,16 @@ export class AppointmentEventController {
   public createAppointment = async (req: Request, res: Response): Promise<void> => {
     try {
       const appointment = await this.service.createAppointment(req.body);
-      res.status(201).json(appointment);
+      res.status(201).json({
+        success: true,
+        data: appointment
+      });
     } catch (error) {
       logger.error('Failed to create appointment:', error);
       res.status(400).json({ 
-        error: error instanceof Error ? error.message : 'Failed to create appointment' 
+        success: false,
+        error: 'Failed to create appointment',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   };
@@ -34,15 +39,23 @@ export class AppointmentEventController {
       const appointment = await this.service.updateAppointment(id, req.body);
       
       if (!appointment) {
-        res.status(404).json({ error: 'Appointment not found' });
+        res.status(404).json({ 
+          success: false,
+          error: 'Appointment not found'
+        });
         return;
       }
 
-      res.json(appointment);
+      res.json({
+        success: true,
+        data: appointment
+      });
     } catch (error) {
       logger.error('Failed to update appointment:', error);
       res.status(400).json({ 
-        error: error instanceof Error ? error.message : 'Failed to update appointment' 
+        success: false,
+        error: 'Failed to update appointment',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   };
@@ -58,15 +71,23 @@ export class AppointmentEventController {
       const appointment = await this.service.cancelAppointment(id, cancelledBy, reason);
       
       if (!appointment) {
-        res.status(404).json({ error: 'Appointment not found' });
+        res.status(404).json({ 
+          success: false,
+          error: 'Appointment not found'
+        });
         return;
       }
 
-      res.json(appointment);
+      res.json({
+        success: true,
+        data: appointment
+      });
     } catch (error) {
       logger.error('Failed to cancel appointment:', error);
       res.status(400).json({ 
-        error: error instanceof Error ? error.message : 'Failed to cancel appointment' 
+        success: false,
+        error: 'Failed to cancel appointment',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   };
@@ -85,11 +106,16 @@ export class AppointmentEventController {
         filters
       );
 
-      res.json(appointments);
+      res.json({
+        success: true,
+        data: appointments
+      });
     } catch (error) {
       logger.error('Failed to fetch appointments:', error);
       res.status(400).json({ 
-        error: error instanceof Error ? error.message : 'Failed to fetch appointments' 
+        success: false,
+        error: 'Failed to fetch appointments',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   };
@@ -103,11 +129,16 @@ export class AppointmentEventController {
       const status = req.query.status as AppointmentStatus | undefined;
 
       const appointments = await this.service.findByParticipant(userId, status);
-      res.json(appointments);
+      res.json({
+        success: true,
+        data: appointments
+      });
     } catch (error) {
       logger.error('Failed to fetch participant appointments:', error);
       res.status(400).json({ 
-        error: error instanceof Error ? error.message : 'Failed to fetch appointments' 
+        success: false,
+        error: 'Failed to fetch appointments',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   };

@@ -2,13 +2,30 @@ import { DatabaseService } from '../../rootModules/database/database.services';
 import { AppointmentType, IAppointmentType } from './appointmentType.schema';
 import { FilterQuery } from 'mongoose';
 import mongoose from 'mongoose';
+import { logger } from '../../utils';
+import { config } from '../../config';
 
 export class AppointmentTypeService extends DatabaseService<IAppointmentType> {
   constructor() {
     super(AppointmentType);
   }
 
+  private validateDuration(duration: number): void {
+    if (duration > config.appointment.maxDurationMinutes) {
+      throw new Error(`Duration cannot exceed ${config.appointment.maxDurationMinutes} minutes`);
+    }
+  }
+
   async createAppointmentType(data: Partial<IAppointmentType>): Promise<IAppointmentType> {
+    if (data.duration) {
+      this.validateDuration(data.duration);
+    }
+    // Check if name already exists
+    const existingType = await this.findOne({ name: data.name });
+    if (existingType) {
+      throw new Error(`Appointment type with name "${data.name}" already exists`);
+    }
+
     // Ensure isActive is set if not provided
     if (typeof data.isActive !== 'boolean') {
       data.isActive = true;
@@ -44,10 +61,24 @@ export class AppointmentTypeService extends DatabaseService<IAppointmentType> {
     id: string, 
     updateData: Partial<IAppointmentType>
   ): Promise<IAppointmentType | null> {
+    if (updateData.duration) {
+      this.validateDuration(updateData.duration);
+    }
     // First check if appointment exists
     const existingAppointment = await this.findOne({ _id: id });
     if (!existingAppointment) {
       return null;
+    }
+
+    // If name is being updated, check for uniqueness
+    if (updateData.name && updateData.name !== existingAppointment.name) {
+      const nameExists = await this.findOne({ 
+        name: updateData.name,
+        _id: { $ne: id } // Exclude current document from check
+      });
+      if (nameExists) {
+        throw new Error(`Appointment type with name "${updateData.name}" already exists`);
+      }
     }
 
     // Prevent updating timestamps manually
@@ -58,15 +89,23 @@ export class AppointmentTypeService extends DatabaseService<IAppointmentType> {
   }
 
   async deleteAppointmentType(id: string): Promise<IAppointmentType | null> {
-    // Update all appointments that use this type
-    const AppointmentEvent = mongoose.model('AppointmentEvent');
-    const updateResult = await AppointmentEvent.updateMany(
-      { appointmentType: id },
-      { $set: { appointmentType: null } }
-    );
+    try {
+      // Update related appointments first
+      const AppointmentEvent = mongoose.model('AppointmentEvent');
+      const updateResult = await AppointmentEvent.updateMany(
+        { appointmentType: id },
+        { $set: { appointmentType: null } }
+      );
 
-    // Then delete the appointment type
-    return await this.delete({ _id: id });
+      // Log the number of affected appointments
+      logger.info(`${updateResult.modifiedCount} appointments affected by deletion of appointment type ${id}`);
+
+      // Then delete the appointment type
+      return await this.delete({ _id: id });
+    } catch (error) {
+      logger.error('Error deleting appointment type:', error);
+      throw error;
+    }
   }
 
   // Additional utility methods
@@ -87,5 +126,28 @@ export class AppointmentTypeService extends DatabaseService<IAppointmentType> {
       ],
       isActive: true
     });
+  }
+
+  async deleteAll(): Promise<void> {
+    try {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Cleanup is not available in production environment');
+      }
+
+      // First update all related appointments
+      const AppointmentEvent = mongoose.model('AppointmentEvent');
+      await AppointmentEvent.updateMany(
+        { appointmentType: { $ne: null } }, // Only update appointments that have an appointmentType
+        { $set: { appointmentType: null } }
+      );
+
+      // Then delete all appointment types
+      await this.deleteMany({});
+      
+      logger.info('All appointment types deleted successfully');
+    } catch (error) {
+      logger.error('Error deleting all appointment types:', error);
+      throw error;
+    }
   }
 } 
