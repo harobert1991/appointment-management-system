@@ -2,6 +2,7 @@ import { AvailabilityProcessor } from '../utils/availabilityProcessor';
 import { DateUtils } from '../utils/dateUtils';
 import { IAvailability, DayOfWeek } from '../provider.schema';
 import dayjs from 'dayjs';
+import { AppointmentStatus, AppointmentType } from '../../appointmentEvent/appointmentEvent.schema';
 
 describe('AvailabilityProcessor', () => {
   const dateUtils = new DateUtils();
@@ -638,18 +639,54 @@ describe('AvailabilityProcessor', () => {
       }
     ];
 
-    const existingAppointments = [
-      {
-        startTime: new Date('2024-03-18T14:00:00'), // 2 PM - valid in both old and new schedule
-        endTime: new Date('2024-03-18T15:00:00'),
-        locationId: 'clinic_a'
-      },
-      {
-        startTime: new Date('2024-03-18T09:30:00'), // 9:30 AM - invalid in new schedule
-        endTime: new Date('2024-03-18T10:30:00'),
-        locationId: 'clinic_a'
-      }
-    ];
+    const existingAppointments = [{
+      startDateTime: new Date('2024-03-18T14:00:00'),
+      endDateTime: new Date('2024-03-18T15:00:00'),
+      location: 'clinic_a',
+      participants: [],
+      status: AppointmentStatus.CONFIRMED,
+      appointmentType: AppointmentType.IN_PERSON,
+      title: 'Test Appointment',
+      description: '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      _id: 'test_id',
+      isAllDay: false,
+      $assertPopulated: () => {},
+      $clone: () => ({} as any)
+    } as any, {
+      startDateTime: new Date('2024-03-18T09:30:00'),
+      endDateTime: new Date('2024-03-18T10:30:00'),
+      location: 'clinic_a',
+      participants: [],
+      status: AppointmentStatus.CONFIRMED,
+      appointmentType: AppointmentType.IN_PERSON,
+      title: 'Test Appointment',
+      description: '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      _id: 'test_id2',
+      isAllDay: false,
+      $assertPopulated: () => {},
+      $clone: () => ({} as any)
+    } as any];
+
+    const validAppointments = [{
+      startDateTime: new Date('2024-03-18T11:00:00'),
+      endDateTime: new Date('2024-03-18T12:00:00'),
+      location: 'clinic_a',
+      participants: [],
+      status: AppointmentStatus.CONFIRMED,
+      appointmentType: AppointmentType.IN_PERSON,
+      title: 'Test Appointment',
+      description: '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      _id: 'test_id',
+      isAllDay: false,
+      $assertPopulated: () => {},
+      $clone: () => ({} as any)
+    } as any];
 
     it('validates new availability against existing appointments', () => {
       expect(() => 
@@ -662,8 +699,6 @@ describe('AvailabilityProcessor', () => {
     });
 
     it('accepts valid availability update', () => {
-      const validAppointments = [existingAppointments[0]]; // Only keep the 2 PM appointment
-
       expect(() => 
         processor.validateAvailabilityUpdate(
           oldAvailability,
@@ -702,7 +737,7 @@ describe('AvailabilityProcessor', () => {
         processor.validateAvailabilityUpdate(
           oldAvailability,
           availabilityWithOverride,
-          [existingAppointments[0]]
+          validAppointments
         )
       ).not.toThrow();
     });

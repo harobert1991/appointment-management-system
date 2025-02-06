@@ -2,6 +2,7 @@ import { AvailabilityProcessor } from '../utils/availabilityProcessor';
 import { DateUtils } from '../utils/dateUtils';
 import { IAvailability, DayOfWeek } from '../provider.schema';
 import dayjs from 'dayjs';
+import { AppointmentStatus, AppointmentType } from '../../appointmentEvent/appointmentEvent.schema';
 
 describe('Availability Processor Integration Tests', () => {
   const dateUtils = new DateUtils();
@@ -213,14 +214,6 @@ describe('Availability Processor Integration Tests', () => {
         specificDate
       );
 
-      console.log('Test data:', {
-        date: specificDate.toISOString(),
-        availableTimeSlots: result?.timeSlots.map(slot => ({
-          start: slot.startTime,
-          end: slot.endTime
-        }))
-      });
-
       expect(result).not.toBeNull();
       
       // Process slots for the specific time only
@@ -232,10 +225,6 @@ describe('Availability Processor Integration Tests', () => {
         specificDate  // only check 9 AM
       );
 
-      console.log('Generated slots:', slots.map(slot => ({
-        start: dayjs(slot.startTime).format('HH:mm'),
-        end: dayjs(slot.endTime).format('HH:mm')
-      })));
 
       // Should get exactly one slot at 9 AM
       expect(slots.length).toBe(1);
@@ -355,10 +344,21 @@ describe('Availability Processor Integration Tests', () => {
       it('keeps later slots available after booking', () => {
         const date = new Date('2024-03-18');
         const existingAppointment = {
-          startTime: new Date('2024-03-18T10:00:00'),
-          endTime: new Date('2024-03-18T11:00:00'),
-          locationId: 'clinic_a'
-        };
+          startDateTime: new Date('2024-03-18T10:00:00'),
+          endDateTime: new Date('2024-03-18T11:00:00'),
+          location: 'clinic_a',
+          participants: [],
+          status: AppointmentStatus.CONFIRMED,
+          appointmentType: AppointmentType.IN_PERSON,
+          title: 'Test Appointment',
+          description: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          _id: 'test_id',
+          isAllDay: false,
+          $assertPopulated: () => {},
+          $clone: () => ({} as any)
+        } as any;
 
         // Check if 11 AM slot is still available
         const elevenAM = new Date('2024-03-18T11:00:00');
@@ -384,10 +384,21 @@ describe('Availability Processor Integration Tests', () => {
 
     describe('Overlapping Appointments', () => {
       const existingAppointment = {
-        startTime: new Date('2024-03-18T10:00:00'),
-        endTime: new Date('2024-03-18T11:00:00'),
-        locationId: 'clinic_a'
-      };
+        startDateTime: new Date('2024-03-18T10:00:00'),
+        endDateTime: new Date('2024-03-18T11:00:00'),
+        location: 'clinic_a',
+        participants: [],
+        status: AppointmentStatus.CONFIRMED,
+        appointmentType: AppointmentType.IN_PERSON,
+        title: 'Test Appointment',
+        description: '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _id: 'test_id',
+        isAllDay: false,
+        $assertPopulated: () => {},
+        $clone: () => ({} as any)
+      } as any;
 
       it('rejects overlapping appointments', () => {
         const overlapTime = new Date('2024-03-18T10:30:00');

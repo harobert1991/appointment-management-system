@@ -1,4 +1,5 @@
 import { ITimeSlot, IAvailability, DayOfWeek } from '../provider.schema';
+import { IAppointmentEvent } from '../../appointmentEvent/appointmentEvent.schema';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -7,12 +8,6 @@ import { DateUtils } from './dateUtils';
 // Initialize dayjs plugins
 dayjs.extend(weekOfYear);
 dayjs.extend(isBetween);
-
-interface IAppointment {
-  startTime: Date;
-  endTime: Date;
-  locationId: string;
-}
 
 export class AvailabilityProcessor {
   private readonly REFERENCE_DATE = new Date('2024-01-01'); // Start of the year as reference
@@ -25,20 +20,8 @@ export class AvailabilityProcessor {
     duration: number,
     minBreak: number = 0,
     specificTime?: Date,
-    existingAppointments: IAppointment[] = []
+    existingAppointments: IAppointmentEvent[] = []
   ): Array<{ startTime: Date; endTime: Date; locationId?: string }> {
-    console.log('\n=== Starting processTimeSlotsForDate ===');
-    console.log('Input:', {
-      date: date.toISOString(),
-      timeSlots: timeSlots.map(slot => ({
-        start: slot.startTime,
-        end: slot.endTime,
-        overnight: slot.spansOvernight
-      })),
-      duration,
-      minBreak,
-      specificTime: specificTime?.toISOString()
-    });
 
     // First validate travel buffers between slots
     for (let i = 0; i < timeSlots.length - 1; i++) {
@@ -66,8 +49,8 @@ export class AvailabilityProcessor {
       const requestedEnd = requestedStart.add(duration, 'minute');
 
       const hasOverlap = existingAppointments.some(appt => {
-        const apptStart = dayjs(appt.startTime);
-        const apptEnd = dayjs(appt.endTime);
+        const apptStart = dayjs(appt.startDateTime);
+        const apptEnd = dayjs(appt.endDateTime);
         return requestedStart.isBefore(apptEnd) && requestedEnd.isAfter(apptStart);
       });
 
@@ -79,30 +62,16 @@ export class AvailabilityProcessor {
     const availableSlots: Array<{ startTime: Date; endTime: Date; locationId?: string }> = [];
 
     timeSlots.forEach((slot, index) => {
-      console.log(`\nProcessing slot ${index + 1}:`, {
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        spansOvernight: slot.spansOvernight
-      });
 
       if (specificTime) {
         const specificDayjs = dayjs(specificTime);
         const requestedHour = specificDayjs.hour();
         const slotStartHour = parseInt(slot.startTime.split(':')[0]);
         const slotEndHour = parseInt(slot.endTime.split(':')[0]);
-        
-        console.log('Specific time check:', {
-          requestedHour,
-          slotStartHour,
-          slotEndHour,
-          spansOvernight: slot.spansOvernight
-        });
 
         const isWithinSlot = slot.spansOvernight
           ? (requestedHour >= slotStartHour || requestedHour < slotEndHour)
           : (requestedHour >= slotStartHour && requestedHour < slotEndHour);
-        
-        console.log('Slot availability:', { isWithinSlot });
 
         if (isWithinSlot) {
           const slotStart = dayjs(date)
@@ -114,11 +83,6 @@ export class AvailabilityProcessor {
             endTime: slotStart.add(duration, 'minute').toDate(),
             locationId: slot.locationId
           };
-
-          console.log('Created specific slot:', {
-            start: dayjs(newSlot.startTime).format('HH:mm'),
-            end: dayjs(newSlot.endTime).format('HH:mm')
-          });
             
           availableSlots.push(newSlot);
         }
@@ -138,11 +102,6 @@ export class AvailabilityProcessor {
         slotEnd = slotEnd.add(1, 'day');
       }
 
-      console.log('Regular slot generation:', {
-        currentStart: currentStart.format('YYYY-MM-DD HH:mm'),
-        slotEnd: slotEnd.format('YYYY-MM-DD HH:mm')
-      });
-
       while (currentStart.add(duration, 'minute').isSameOrBefore(slotEnd)) {
         const newSlot = {
           startTime: currentStart.toDate(),
@@ -150,20 +109,10 @@ export class AvailabilityProcessor {
           locationId: slot.locationId
         };
 
-        console.log('Generated slot:', {
-          start: dayjs(newSlot.startTime).format('HH:mm'),
-          end: dayjs(newSlot.endTime).format('HH:mm')
-        });
-
         availableSlots.push(newSlot);
         currentStart = dayjs(currentStart).add(duration + minBreak, 'minute');
       }
     });
-
-    console.log('\nFinal slots:', availableSlots.map(slot => ({
-      start: dayjs(slot.startTime).format('HH:mm'),
-      end: dayjs(slot.endTime).format('HH:mm')
-    })));
 
     return availableSlots;
   }
@@ -219,11 +168,11 @@ export class AvailabilityProcessor {
   validateAvailabilityUpdate(
     oldAvailability: IAvailability[],
     newAvailability: IAvailability[],
-    existingAppointments: IAppointment[]
+    existingAppointments: IAppointmentEvent[]
   ): void {
     for (const appointment of existingAppointments) {
-      const dayOfWeek = dayjs(appointment.startTime).format('dddd') as DayOfWeek;
-      const date = appointment.startTime;
+      const dayOfWeek = dayjs(appointment.startDateTime).format('dddd') as DayOfWeek;
+      const date = appointment.startDateTime;
 
       // Check specific date availability first
       const specificDate = this.getSpecificDateAvailability(newAvailability, date);
@@ -244,14 +193,14 @@ export class AvailabilityProcessor {
 
   private isTimeSlotAvailable(
     timeSlots: ITimeSlot[],
-    appointment: IAppointment
+    appointment: IAppointmentEvent
   ): boolean {
     return timeSlots.some(slot => {
-      const apptStartTime = dayjs(appointment.startTime).format('HH:mm');
-      const apptEndTime = dayjs(appointment.endTime).format('HH:mm');
+      const apptStartTime = dayjs(appointment.startDateTime).format('HH:mm');
+      const apptEndTime = dayjs(appointment.endDateTime).format('HH:mm');
       
       return (
-        slot.locationId === appointment.locationId &&
+        slot.locationId === appointment.location &&
         apptStartTime >= slot.startTime &&
         apptEndTime <= slot.endTime
       );

@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { IUser } from '../user/user.schema';
+import { z } from 'zod';
 
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
@@ -188,4 +189,46 @@ providerSchema.index({ userId: 1 }, { unique: true });
 providerSchema.index({ servicesOffered: 1 });
 providerSchema.index({ 'availability.dayOfWeek': 1 });
 
-export const Provider = mongoose.model<IProvider>('Provider', providerSchema); 
+export const Provider = mongoose.model<IProvider>('Provider', providerSchema);
+
+export const checkAvailabilitySchema = z.object({
+  params: z.object({
+    providerId: z.string()
+  }),
+  query: z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    duration: z.string().regex(/^\d+$/).transform(Number),
+    locationId: z.string().optional()
+  })
+});
+
+export const updateAvailabilitySchema = z.object({
+  params: z.object({
+    providerId: z.string()
+  }),
+  body: z.object({
+    availability: z.array(z.object({
+      dayOfWeek: z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']),
+      timeSlots: z.array(z.object({
+        startTime: z.string().regex(/^\d{2}:\d{2}$/),
+        endTime: z.string().regex(/^\d{2}:\d{2}$/),
+        requiresTravelTime: z.boolean(),
+        spansOvernight: z.boolean(),
+        locationId: z.string().optional(),
+        travelBuffer: z.number().optional()
+      })),
+      isRecurring: z.boolean(),
+      specificDates: z.array(z.object({
+        date: z.date(),
+        timeSlots: z.array(z.object({
+          startTime: z.string().regex(/^\d{2}:\d{2}$/),
+          endTime: z.string().regex(/^\d{2}:\d{2}$/),
+          requiresTravelTime: z.boolean(),
+          spansOvernight: z.boolean(),
+          locationId: z.string().optional(),
+          travelBuffer: z.number().optional()
+        }))
+      })).optional()
+    }))
+  })
+}); 
