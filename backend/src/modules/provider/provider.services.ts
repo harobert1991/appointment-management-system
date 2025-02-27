@@ -14,6 +14,8 @@ import { AppointmentEventService } from '../appointmentEvent/appointmentEvent.se
 import { IAppointmentEvent } from '../appointmentEvent/appointmentEvent.schema';
 import { UserService } from '../user/user.services';
 import { IUser } from '../user/user.schema';
+import { ClientSession } from 'mongoose';
+import mongoose from 'mongoose';
 
 // Initialize dayjs plugins
 dayjs.extend(isSameOrAfter);
@@ -34,7 +36,7 @@ export class ProviderService extends DatabaseService<IProvider> {
   private timeSlotValidator: TimeSlotValidator;
   private availabilityProcessor: AvailabilityProcessor;
   public validateNoTimeSlotOverlap: (timeSlots: ITimeSlot[]) => void;
-
+  private userService: UserService;
 
   constructor() {
     super(Provider);
@@ -42,7 +44,7 @@ export class ProviderService extends DatabaseService<IProvider> {
     this.timeSlotValidator = new TimeSlotValidator(this.dateUtils);
     this.availabilityProcessor = new AvailabilityProcessor(this.dateUtils);
     this.validateNoTimeSlotOverlap = this.timeSlotValidator.validateNoTimeSlotOverlap.bind(this.timeSlotValidator);
-
+    this.userService = new UserService();
   }
 
   /**
@@ -50,21 +52,19 @@ export class ProviderService extends DatabaseService<IProvider> {
    */
   async createProviderWithUser(
     providerData: Omit<Partial<IProvider>, 'userId'>,
-    userData: Partial<IUser>
+    userData: Partial<IUser>,
+    options?: { session?: ClientSession }
   ): Promise<{ provider: IProvider; user: IUser }> {
-    // Validate time slots for each availability
-    if (providerData.availability) {
-      this.validateAvailabilityPatterns(providerData.availability);
-    }
+    const session = options?.session || await mongoose.startSession();
+    let ownSession = !options?.session;
 
-    const session = await this.startSession();
-    
     try {
-      await session.startTransaction();
+      if (ownSession) {
+        session.startTransaction();
+      }
 
       // Create user first
-      const userService = new UserService();
-      const user = await userService.createUser(userData, { session });
+      const user = await this.userService.createUser(userData, { session });
 
       // Create provider with user reference
       const provider = await this.create({
@@ -72,7 +72,9 @@ export class ProviderService extends DatabaseService<IProvider> {
         userId: user._id
       }, { session });
 
-      await session.commitTransaction();
+      if (ownSession) {
+        await session.commitTransaction();
+      }
 
       return {
         provider,
@@ -86,10 +88,14 @@ export class ProviderService extends DatabaseService<IProvider> {
         } as IUser
       };
     } catch (error) {
-      await session.abortTransaction();
+      if (ownSession) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
-      await session.endSession();
+      if (ownSession) {
+        session.endSession();
+      }
     }
   }
 
@@ -154,7 +160,8 @@ export class ProviderService extends DatabaseService<IProvider> {
   async getAvailableTimeSlots(
     providerId: string,
     date: Date,
-    duration: number
+    duration: number,
+    locationId?: string
   ): Promise<Array<{ startTime: Date; endTime: Date; locationId?: string }>> {
     const provider = await this.findById(providerId);
     if (!provider) {
@@ -308,6 +315,29 @@ export class ProviderService extends DatabaseService<IProvider> {
 
     // Delete the provider
     await this.delete({ _id: providerId });
+  }
+
+  /**
+   * Deletes all providers and their associated users
+   * Only available in development mode
+   */
+  async deleteAll(): Promise<void> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('This operation is not allowed in production');
+    }
+    
+    // First, get all providers to find associated users
+    const providers = await this.find({});
+    const userIds = providers.map(provider => provider.userId);
+
+    // Delete all providers
+    await this.deleteMany({});
+
+    // Delete associated users if there are any
+    if (userIds.length > 0) {
+      const User = mongoose.model('User');
+      await User.deleteMany({ _id: { $in: userIds } });
+    }
   }
 
   // Private helper methods

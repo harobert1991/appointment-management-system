@@ -1,8 +1,9 @@
 import { DatabaseService } from '../database/database.services';
-import { Document, Model } from 'mongoose';
+import { Document, Model, FilterQuery, UpdateQuery, ClientSession } from 'mongoose';
+
 
 export class BaseService<T extends Document> extends DatabaseService<T> {
-  constructor(protected model: Model<T>) {
+  constructor(model: Model<T>) {
     super(model);
   }
 
@@ -14,12 +15,23 @@ export class BaseService<T extends Document> extends DatabaseService<T> {
     return super.create(data);
   }
 
-  async update(id: string, data: Partial<T>): Promise<T | null> {
-    return super.update({ _id: id }, { $set: data });
+  async updateById(id: string, data: Partial<T>): Promise<T | null> {
+    const filter: FilterQuery<T> = { _id: id };
+    const update: UpdateQuery<T> = { $set: data };
+    return super.update(filter, update);
   }
 
-  async delete(id: string): Promise<T | null> {
-    return super.delete({ _id: id });
+  async deleteById(id: string): Promise<T | null> {
+    const filter: FilterQuery<T> = { _id: id };
+    return super.delete(filter);
+  }
+
+  update(filter: FilterQuery<T>, data: UpdateQuery<T>, options?: { session?: ClientSession }): Promise<T | null> {
+    return super.update(filter, data, options);
+  }
+
+  delete(filter: FilterQuery<T>): Promise<T | null> {
+    return super.delete(filter);
   }
 
   async find(filter = {}): Promise<T[]> {

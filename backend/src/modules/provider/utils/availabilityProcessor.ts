@@ -142,7 +142,7 @@ export class AvailabilityProcessor {
 
     return availability.find(a => {
       const dayMatches = a.dayOfWeek === dayOfWeek;
-      const weekMatches = !a.weeks || this.isAlternateWeek(date, a.weeks);
+      const weekMatches = !a.weeks || a.weeks.length === 0 || this.isAlternateWeek(date, a.weeks);
 
       return dayMatches && weekMatches;
     }) || null;

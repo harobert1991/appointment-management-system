@@ -28,10 +28,10 @@ const googleCalendarService = GoogleCalendarService.getInstance({
 });
 
 // Initialize and start the token refresh scheduler only in non-test environment
-const tokenRefreshScheduler = TokenRefreshScheduler.initialize(googleCalendarService);
-if (process.env.NODE_ENV !== 'test') {
-  tokenRefreshScheduler.startScheduler();
-}
+// const tokenRefreshScheduler = TokenRefreshScheduler.initialize(googleCalendarService);
+// if (process.env.NODE_ENV !== 'test') {
+//   tokenRefreshScheduler.startScheduler();
+// }
 
 // Initialize express and middleware
 app.use(express.json());
@@ -58,7 +58,7 @@ const startServer = async () => {
     // Handle graceful shutdown
     const shutdown = () => {
       logger.info('Shutting down server...');
-      tokenRefreshScheduler.stopScheduler();
+      // tokenRefreshScheduler.stopScheduler();
       server.close(() => {
         logger.info('Server shut down complete');
         process.exit(0);

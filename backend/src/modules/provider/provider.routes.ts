@@ -75,6 +75,94 @@ export const routes: RouteConfig[] = [
         }
       }
     ]
+  },
+  {
+    method: 'get',
+    path: '/providers/:providerId/available-slots',
+    handler: controller.getAvailableTimeSlots,
+    description: 'Get available time slots for a provider on specific dates',
+    input: {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      params: {
+        providerId: { type: 'string', required: true }
+      },
+      query: {
+        dates: { 
+          type: 'array',
+          required: true
+        },
+        appointmentTypeId: { 
+          type: 'string', 
+          required: true
+        },
+        locationId: { 
+          type: 'string', 
+          required: false
+        }
+      }
+    },
+    errorResponses: [
+      {
+        status: 400,
+        description: 'Bad Request - Invalid Parameters',
+        body: {
+          success: false,
+          error: 'Validation Error',
+          details: 'string'
+        }
+      },
+      {
+        status: 404,
+        description: 'Provider or Appointment Type Not Found',
+        body: {
+          success: false,
+          error: 'Not Found',
+          details: 'string'
+        }
+      },
+      {
+        status: 500,
+        description: 'Internal Server Error',
+        body: {
+          success: false,
+          error: 'Failed to get available time slots',
+          details: 'string'
+        }
+      }
+    ]
+  },
+  {
+    method: 'delete',
+    path: '/providers/cleanup',
+    handler: controller.deleteAllProviders,
+    description: 'Delete all providers (development only)',
+    input: {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    },
+    errorResponses: [
+      {
+        status: 403,
+        description: 'Forbidden in Production',
+        body: {
+          success: false,
+          error: 'Forbidden',
+          details: 'string'
+        }
+      },
+      {
+        status: 500,
+        description: 'Internal Server Error',
+        body: {
+          success: false,
+          error: 'Failed to delete providers',
+          details: 'string'
+        }
+      }
+    ]
   }
 ];
 

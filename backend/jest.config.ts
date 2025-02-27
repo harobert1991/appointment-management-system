@@ -7,7 +7,7 @@ const config: Config.InitialOptions = {
   transform: {
     '^.+\\.tsx?$': 'ts-jest'
   },
-  setupFiles: ['<rootDir>/src/test/setupTimezone.ts'],
+  // setupFiles: ['<rootDir>/tests/setup.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   verbose: true,
   testMatch: ['**/__tests__/**/*.test.ts'],

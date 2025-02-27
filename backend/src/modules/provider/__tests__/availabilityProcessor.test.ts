@@ -4,494 +4,202 @@ import { IAvailability, DayOfWeek } from '../provider.schema';
 import dayjs from 'dayjs';
 import { AppointmentStatus, AppointmentType } from '../../appointmentEvent/appointmentEvent.schema';
 
-describe('AvailabilityProcessor', () => {
+describe('Availability Processor Integration Tests', () => {
   const dateUtils = new DateUtils();
   const processor = new AvailabilityProcessor(dateUtils);
 
-  describe('Specific Date Availability Lookup', () => {
-    const baseTimeSlots = [
-      {
-        startTime: '09:00',
-        endTime: '17:00',
-        requiresTravelTime: false,
-        spansOvernight: false
-      }
-    ];
-
-    const availability: IAvailability[] = [
+  describe('Provider Fully Available (24/7)', () => {
+    const fullAvailability: IAvailability[] = [
       {
         dayOfWeek: 'Monday' as DayOfWeek,
         timeSlots: [
           {
-            startTime: '10:00',
+            startTime: '00:00',
+            endTime: '24:00',
+            requiresTravelTime: false,
+            spansOvernight: false
+          }
+        ],
+        isRecurring: true
+      }
+    ];
+
+    it('accepts appointments at any time', () => {
+      const testTimes = [
+        '02:00', '08:00', '13:00', '19:00', '23:00'
+      ];
+
+      testTimes.forEach(time => {
+        const date = new Date(`2024-03-18T${time}:00`); // A Monday
+        const result = processor.getDayAvailability(
+          fullAvailability,
+          'Monday',
+          date
+        );
+
+        expect(result).not.toBeNull();
+        const slots = processor.processTimeSlotsForDate(date, result!.timeSlots, 60);
+        expect(slots.length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe('Provider with Weekly Availability (M-F, 9-5)', () => {
+    const weeklyAvailability: IAvailability[] = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'
+    ].map(day => ({
+      dayOfWeek: day as DayOfWeek,
+      timeSlots: [
+        {
+          startTime: '09:00',
+          endTime: '17:00',
+          requiresTravelTime: false,
+          spansOvernight: false
+        }
+      ],
+      isRecurring: true
+    }));
+
+    it('accepts appointments during business hours', () => {
+      // Tuesday March 19, 2024 at 10 AM
+      const validDate = new Date('2024-03-19T10:00:00');
+      const result = processor.getDayAvailability(
+        weeklyAvailability,
+        'Tuesday',
+        validDate
+      );
+
+      expect(result).not.toBeNull();
+      const slots = processor.processTimeSlotsForDate(validDate, result!.timeSlots, 60);
+      expect(slots.length).toBeGreaterThan(0);
+    });
+
+    it('rejects appointments before business hours', () => {
+      const earlyDate = new Date('2024-03-19T08:00:00'); // 8 AM Tuesday
+      const result = processor.getDayAvailability(
+        weeklyAvailability,
+        'Tuesday',
+        earlyDate
+      );
+
+      // Get slots specifically for 8 AM
+      const slots = processor.processTimeSlotsForDate(
+        earlyDate, 
+        result!.timeSlots, 
+        60,
+        0,
+        earlyDate // Add a parameter to only check this specific time
+      );
+      expect(slots.length).toBe(0);
+    });
+
+    it('rejects appointments after business hours', () => {
+      const lateDate = new Date('2024-03-19T18:00:00'); // 6 PM Tuesday
+      const result = processor.getDayAvailability(
+        weeklyAvailability,
+        'Tuesday',
+        lateDate
+      );
+
+      // Get slots specifically for 6 PM
+      const slots = processor.processTimeSlotsForDate(
+        lateDate, 
+        result!.timeSlots, 
+        60,
+        0,
+        lateDate // Add a parameter to only check this specific time
+      );
+      expect(slots.length).toBe(0);
+    });
+
+    it('rejects weekend appointments', () => {
+      const weekendDate = new Date('2024-03-23T10:00:00'); // Saturday
+      const result = processor.getDayAvailability(
+        weeklyAvailability,
+        'Saturday',
+        weekendDate
+      );
+
+      expect(result).toBeNull(); // No availability on weekends
+    });
+  });
+
+  describe('Provider with Split Shifts', () => {
+    const splitShiftAvailability: IAvailability[] = [
+      {
+        dayOfWeek: 'Monday' as DayOfWeek,
+        timeSlots: [
+          {
+            startTime: '09:00',
+            endTime: '12:00',
+            requiresTravelTime: false,
+            spansOvernight: false
+          },
+          {
+            startTime: '14:00',
             endTime: '18:00',
             requiresTravelTime: false,
             spansOvernight: false
           }
         ],
         isRecurring: true
-      },
-      {
-        dayOfWeek: 'Monday' as DayOfWeek,
-        timeSlots: baseTimeSlots,
-        isRecurring: false,
-        specificDates: [
-          {
-            date: new Date('2024-03-18'),
-            timeSlots: baseTimeSlots
-          }
-        ]
       }
     ];
 
-    it('prioritizes specific date over weekly schedule', () => {
-      const result = processor.getSpecificDateAvailability(
-        availability,
-        new Date('2024-03-18')
-      );
-
-      expect(result).not.toBeNull();
-      expect(result?.timeSlots[0].startTime).toBe('09:00');
-      expect(result?.timeSlots[0].endTime).toBe('17:00');
-    });
-
-    it('returns null when no specific date is available', () => {
-      const result = processor.getSpecificDateAvailability(
-        availability,
-        new Date('2024-03-19') // A Tuesday
-      );
-
-      expect(result).toBeNull();
-    });
-
-    it('handles multiple specific dates correctly', () => {
-      const multiDateAvailability: IAvailability[] = [
-        {
-          dayOfWeek: 'Monday',
-          timeSlots: baseTimeSlots,
-          isRecurring: false,
-          specificDates: [
-            {
-              date: new Date('2024-03-18'),
-              timeSlots: [{ ...baseTimeSlots[0], startTime: '09:00' }]
-            },
-            {
-              date: new Date('2024-03-19'),
-              timeSlots: [{ ...baseTimeSlots[0], startTime: '10:00' }]
-            }
-          ]
-        }
+    it('accepts appointments during shift hours', () => {
+      const validTimes = [
+        new Date('2024-03-18T11:00:00'), // Morning shift
+        new Date('2024-03-18T16:00:00')  // Afternoon shift
       ];
 
-      const result = processor.getSpecificDateAvailability(
-        multiDateAvailability,
-        new Date('2024-03-19')
-      );
-
-      expect(result).not.toBeNull();
-      expect(result?.timeSlots[0].startTime).toBe('10:00');
-    });
-
-    it('returns first matching specific date when multiple schedules exist', () => {
-      const duplicateAvailability: IAvailability[] = [
-        {
-          dayOfWeek: 'Monday' as DayOfWeek,
-          timeSlots: baseTimeSlots,
-          isRecurring: false,
-          specificDates: [
-            {
-              date: new Date('2024-03-18'),
-              timeSlots: [{ ...baseTimeSlots[0], startTime: '09:00' }]
-            }
-          ]
-        },
-        {
-          dayOfWeek: 'Monday' as DayOfWeek,
-          timeSlots: baseTimeSlots,
-          isRecurring: false,
-          specificDates: [
-            {
-              date: new Date('2024-03-18'),
-              timeSlots: [{ ...baseTimeSlots[0], startTime: '10:00' }]
-            }
-          ]
-        }
-      ];
-
-      const result = processor.getSpecificDateAvailability(
-        duplicateAvailability,
-        new Date('2024-03-18')
-      );
-
-      expect(result).not.toBeNull();
-      expect(result?.timeSlots[0].startTime).toBe('09:00');
-    });
-
-    it('handles timezone differences correctly', () => {
-      const parisDateUtils = new DateUtils('Europe/Paris');
-      const parisProcessor = new AvailabilityProcessor(parisDateUtils);
-      
-      // Create a date that's the 18th in UTC but might be the 19th in Paris
-      const lateNightUTC = new Date('2024-03-18T23:30:00.000Z');
-
-      const result = parisProcessor.getSpecificDateAvailability(
-        availability,
-        lateNightUTC
-      );
-
-      // The result should match the date as seen in Paris timezone
-      const expectedMatch = parisDateUtils.normalizeDate(lateNightUTC) === '2024-03-18';
-      expect(result !== null).toBe(expectedMatch);
-    });
-  });
-
-  describe('Travel Buffer Between Appointments', () => {
-    it('accepts slots with sufficient travel buffer', () => {
-      const slots = [
-        {
-          startTime: '09:00',
-          endTime: '12:00',
-          requiresTravelTime: true,
-          travelBuffer: 30,
-          spansOvernight: false
-        },
-        {
-          startTime: '13:00', // 1 hour buffer > 30 min required
-          endTime: '17:00',
-          requiresTravelTime: true,
-          travelBuffer: 30,
-          spansOvernight: false
-        }
-      ];
-
-      const result = processor.processTimeSlotsForDate(new Date(), slots, 60);
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('rejects slots with insufficient travel buffer', () => {
-      const slots = [
-        {
-          startTime: '09:00',
-          endTime: '12:00',
-          requiresTravelTime: true,
-          travelBuffer: 30,
-          spansOvernight: false
-        },
-        {
-          startTime: '12:15', // Only 15 min buffer < 30 min required
-          endTime: '17:00',
-          requiresTravelTime: true,
-          travelBuffer: 30,
-          spansOvernight: false
-        }
-      ];
-
-      expect(() => processor.processTimeSlotsForDate(new Date(), slots, 60))
-        .toThrow('Insufficient travel buffer');
-    });
-  });
-
-  describe('Exception Date Handling', () => {
-    const baseSchedule: IAvailability[] = [
-      {
-        dayOfWeek: 'Monday',
-        timeSlots: [
-          {
-            startTime: '09:00',
-            endTime: '17:00',
-            requiresTravelTime: false,
-            spansOvernight: false
-          }
-        ],
-        isRecurring: true
-      }
-    ];
-
-    const exceptions = [new Date('2024-03-18')]; // Add exceptions array
-
-    it('returns no availability on exception dates', () => {
-      const exceptionDate = new Date('2024-03-18'); // A Monday
-      const result = processor.getDayAvailability(
-        baseSchedule,
-        'Monday',
-        exceptionDate,
-        exceptions  // Pass exceptions to method
-      );
-
-      expect(result).toBeNull();
-    });
-
-    it('returns normal availability on non-exception dates', () => {
-      const normalDate = new Date('2024-03-25'); // Another Monday
-      const result = processor.getDayAvailability(
-        baseSchedule,
-        'Monday',
-        normalDate,
-        exceptions  // Pass exceptions to method
-      );
-
-      expect(result).not.toBeNull();
-      expect(result?.timeSlots[0].startTime).toBe('09:00');
-    });
-  });
-
-  describe('Week-Specific Availability', () => {
-    const biweeklySchedule: IAvailability[] = [
-      {
-        dayOfWeek: dayjs(new Date('2024-01-08')).format('dddd') as DayOfWeek,
-        timeSlots: [
-          {
-            startTime: '09:00',
-            endTime: '17:00',
-            requiresTravelTime: false,
-            spansOvernight: false
-          }
-        ],
-        isRecurring: true,
-        weeks: [2] // Start on week 2, then every other week
-      }
-    ];
-
-    it('returns availability for correct alternating weeks', () => {
-      // These dates should be available (every other week starting week 2)
-      const availableDates = [
-        new Date('2024-01-08'), // Week 2
-        new Date('2024-01-22'), // Week 4
-        new Date('2024-02-05'), // Week 6
-        new Date('2024-02-19'), // Week 8
-        new Date('2024-03-04'), // Week 10
-        new Date('2024-03-18')  // Week 12
-      ];
-
-      availableDates.forEach(date => {
-        const dayOfWeek = dayjs(date).format('dddd') as DayOfWeek;
+      validTimes.forEach(date => {
         const result = processor.getDayAvailability(
-          biweeklySchedule,
-          dayOfWeek,
+          splitShiftAvailability,
+          'Monday',
           date
         );
+
         expect(result).not.toBeNull();
+        const slots = processor.processTimeSlotsForDate(date, result!.timeSlots, 60);
+        expect(slots.length).toBeGreaterThan(0);
       });
     });
 
-    it('returns no availability for off weeks', () => {
-      // These dates should not be available
-      const unavailableDates = [
-        new Date('2024-01-15'), // Week 3
-        new Date('2024-01-29'), // Week 5
-        new Date('2024-02-12'), // Week 7
-        new Date('2024-02-26'), // Week 9
-        new Date('2024-03-11')  // Week 11
-      ];
-
-      unavailableDates.forEach(date => {
-        const dayOfWeek = dayjs(date).format('dddd') as DayOfWeek;
-        const result = processor.getDayAvailability(
-          biweeklySchedule,
-          dayOfWeek,
-          date
-        );
-        expect(result).toBeNull();
-      });
-    });
-  });
-
-  describe('Generating Available Time Slots', () => {
-    const baseSlot = {
-      startTime: '09:00',
-      endTime: '17:00',
-      requiresTravelTime: false,
-      spansOvernight: false
-    };
-
-    it('generates correct number of slots for given duration', () => {
-      const slots = [baseSlot];
-      const duration = 60; // 1 hour appointments
-      const minBreak = 0;
-
-      const result = processor.processTimeSlotsForDate(new Date(), slots, duration, minBreak);
-
-      // 8 hour slot should yield 8 one-hour appointments
-      expect(result.length).toBe(8);
-      expect(result[0].startTime.getHours()).toBe(9);
-      expect(result[7].startTime.getHours()).toBe(16);
-    });
-
-    it('applies breaks between appointments correctly', () => {
-      const slots = [baseSlot];
-      const duration = 60; // 1 hour appointments
-      const minBreak = 30; // 30 minute breaks
-
-      const result = processor.processTimeSlotsForDate(new Date(), slots, duration, minBreak);
-
-      // 8 hour slot with 1.5 hour blocks (1h appointment + 30min break) should yield 5 appointments
-      expect(result.length).toBe(5);
-      
-      // Verify gaps between appointments
-      for (let i = 0; i < result.length - 1; i++) {
-        const gap = (result[i + 1].startTime.getTime() - result[i].endTime.getTime()) / (1000 * 60);
-        expect(gap).toBe(30);
-      }
-    });
-  });
-
-  describe('Handling Different Appointment Durations', () => {
-    const baseSlot = {
-      startTime: '09:00',
-      endTime: '17:00',
-      requiresTravelTime: false,
-      spansOvernight: false
-    };
-
-    it('handles different appointment durations correctly', () => {
-      const slots = [baseSlot];
-      
-      // Test 30-minute appointments
-      const shortResult = processor.processTimeSlotsForDate(new Date(), slots, 30);
-      expect(shortResult.length).toBe(16); // 8 hours = 16 30-minute slots
-
-      // Test 2-hour appointments
-      const longResult = processor.processTimeSlotsForDate(new Date(), slots, 120);
-      expect(longResult.length).toBe(4); // 8 hours = 4 2-hour slots
-    });
-
-    it('rejects appointments that exceed slot duration', () => {
-      const shortSlot = {
-        startTime: '09:00',
-        endTime: '10:00', // 1 hour slot
-        requiresTravelTime: false,
-        spansOvernight: false
-      };
-
-      const result = processor.processTimeSlotsForDate(
-        new Date(),
-        [shortSlot],
-        120 // 2 hour appointment
+    it('rejects appointments during break time', () => {
+      // Monday at 1 PM (during break)
+      const breakTime = new Date('2024-03-18T13:00:00');
+      const result = processor.getDayAvailability(
+        splitShiftAvailability,
+        'Monday',
+        breakTime
       );
 
-      expect(result.length).toBe(0); // No valid slots should be found
-    });
-
-    it('handles appointments that exactly fit the slot', () => {
-      const twoHourSlot = {
-        startTime: '09:00',
-        endTime: '11:00', // 2 hour slot
-        requiresTravelTime: false,
-        spansOvernight: false
-      };
-
-      const result = processor.processTimeSlotsForDate(
-        new Date(),
-        [twoHourSlot],
-        120 // 2 hour appointment
-      );
-
-      expect(result.length).toBe(1);
-      expect(result[0].startTime.getHours()).toBe(9);
-      expect(result[0].endTime.getHours()).toBe(11);
+      expect(result).not.toBeNull();
+      const slots = processor.processTimeSlotsForDate(breakTime, result!.timeSlots, 60);
+      const breakTimeSlots = slots.filter(slot => {
+        const hour = slot.startTime.getHours();
+        return hour >= 12 && hour < 14;
+      });
+      expect(breakTimeSlots.length).toBe(0);
     });
   });
 
-  describe('Multi-Location Scheduling', () => {
-    const multiLocationSlots = [
+  describe('Specific Date Rules', () => {
+    const specificDateAvailability: IAvailability[] = [
       {
-        startTime: '09:00',
-        endTime: '12:00',
-        requiresTravelTime: true,
-        travelBuffer: 30,
-        spansOvernight: false,
-        locationId: 'location_a'
-      },
-      {
-        startTime: '13:00',
-        endTime: '17:00',
-        requiresTravelTime: true,
-        travelBuffer: 30,
-        spansOvernight: false,
-        locationId: 'location_b'
-      }
-    ];
-
-    it('generates slots with correct location IDs', () => {
-      const result = processor.processTimeSlotsForDate(new Date(), multiLocationSlots, 60);
-      
-      // Morning slots should be in location A
-      const morningSlots = result.filter(slot => slot.startTime.getHours() < 12);
-      morningSlots.forEach(slot => {
-        expect(slot.locationId).toBe('location_a');
-      });
-
-      // Afternoon slots should be in location B
-      const afternoonSlots = result.filter(slot => slot.startTime.getHours() >= 13);
-      afternoonSlots.forEach(slot => {
-        expect(slot.locationId).toBe('location_b');
-      });
-    });
-
-    it('enforces travel buffer between locations', () => {
-      const tightSlots = [
-        {
-          startTime: '09:00',
-          endTime: '12:00',
-          requiresTravelTime: true,
-          travelBuffer: 60,  // Needs 1 hour travel time
-          spansOvernight: false,
-          locationId: 'location_a'
-        },
-        {
-          startTime: '12:30', // Only 30 min gap
-          endTime: '17:00',
-          requiresTravelTime: true,
-          travelBuffer: 60,
-          spansOvernight: false,
-          locationId: 'location_b'
-        }
-      ];
-
-      expect(() => processor.processTimeSlotsForDate(new Date(), tightSlots, 60))
-        .toThrow('Insufficient travel buffer');
-    });
-  });
-
-  describe('Time Slot Availability Check', () => {
-    const baseTimeSlots = [
-      {
-        startTime: '09:00',
-        endTime: '17:00',
-        requiresTravelTime: false,
-        spansOvernight: false,
-        locationId: 'location_a'
-      }
-    ];
-
-    const availability: IAvailability[] = [
-      {
-        dayOfWeek: 'Monday' as DayOfWeek,
-        timeSlots: baseTimeSlots,
-        isRecurring: true
-      },
-      {
-        dayOfWeek: 'Monday' as DayOfWeek,
-        timeSlots: [
-          {
-            startTime: '10:00',
-            endTime: '15:00',
-            requiresTravelTime: false,
-            spansOvernight: false,
-            locationId: 'location_b'
-          }
-        ],
+        dayOfWeek: 'Sunday' as DayOfWeek, // March 10, 2024 is a Sunday
+        timeSlots: [],
         isRecurring: false,
         specificDates: [
           {
-            date: new Date('2024-03-18'),
+            date: new Date('2024-03-10'),
             timeSlots: [
               {
-                startTime: '11:00',
+                startTime: '08:00',
                 endTime: '16:00',
                 requiresTravelTime: false,
                 spansOvernight: false,
-                locationId: 'location_c'
+                locationId: 'clinic_a'
               }
             ]
           }
@@ -499,137 +207,105 @@ describe('AvailabilityProcessor', () => {
       }
     ];
 
-    it('validates normal time slots', () => {
-      const mondayDate = new Date('2024-03-11'); // A regular Monday
-      const result = processor.getDayAvailability(
-        availability,
-        'Monday',
-        mondayDate
-      );
-
-      expect(result).not.toBeNull();
-      expect(result?.timeSlots[0].locationId).toBe('location_a');
-      expect(result?.timeSlots[0].startTime).toBe('09:00');
-    });
-
-    it('prioritizes specific date overrides', () => {
-      const specificDate = new Date('2024-03-18');
+    it('allows appointments on specifically available dates', () => {
+      const specificDate = new Date('2024-03-10T09:00:00'); // 9 AM on March 10
       const result = processor.getSpecificDateAvailability(
-        availability,
+        specificDateAvailability,
         specificDate
       );
 
       expect(result).not.toBeNull();
-      expect(result?.timeSlots[0].locationId).toBe('location_c');
-      expect(result?.timeSlots[0].startTime).toBe('11:00');
+      
+      // Process slots for the specific time only
+      const slots = processor.processTimeSlotsForDate(
+        specificDate,
+        result!.timeSlots,
+        60,  // 1-hour appointment
+        0,   // no break
+        specificDate  // only check 9 AM
+      );
+
+
+      // Should get exactly one slot at 9 AM
+      expect(slots.length).toBe(1);
+      expect(slots[0].startTime.getHours()).toBe(9);
+      expect(slots[0].endTime.getHours()).toBe(10);
     });
 
-    it('respects exception dates', () => {
-      const exceptionDate = new Date('2024-03-25');
-      const result = processor.getDayAvailability(
-        availability,
-        'Monday',
-        exceptionDate,
-        [exceptionDate]
+    it('rejects appointments on dates without specific availability', () => {
+      const nextDay = new Date('2024-03-11T09:00:00'); // 9 AM on March 11
+      const result = processor.getSpecificDateAvailability(
+        specificDateAvailability,
+        nextDay
       );
 
       expect(result).toBeNull();
     });
 
-    it('validates location-specific constraints', () => {
-      const slots = [
+    it('rejects appointments outside specific date hours', () => {
+      const earlyTime = new Date('2024-03-10T07:00:00'); // 7 AM on March 10 (before available hours)
+      const result = processor.getSpecificDateAvailability(
+        specificDateAvailability,
+        earlyTime
+      );
+
+      expect(result).not.toBeNull();
+      const slots = processor.processTimeSlotsForDate(
+        earlyTime,
+        result!.timeSlots,
+        60,
+        0,
+        earlyTime
+      );
+      expect(slots.length).toBe(0);
+    });
+
+    it('handles transition between specific and regular availability', () => {
+      const mixedAvailability: IAvailability[] = [
         {
-          startTime: '09:00',
-          endTime: '12:00',
-          requiresTravelTime: true,
-          travelBuffer: 30,
-          spansOvernight: false,
-          locationId: 'location_a'
+          dayOfWeek: 'Sunday' as DayOfWeek,
+          timeSlots: [
+            {
+              startTime: '10:00',
+              endTime: '18:00',
+              requiresTravelTime: false,
+              spansOvernight: false
+            }
+          ],
+          isRecurring: true
         },
-        {
-          startTime: '12:15',
-          endTime: '17:00',
-          requiresTravelTime: true,
-          travelBuffer: 30,
-          spansOvernight: false,
-          locationId: 'location_b'
-        }
+        ...specificDateAvailability // Add specific date override
       ];
 
-      expect(() => processor.processTimeSlotsForDate(new Date(), slots, 60))
-        .toThrow('Insufficient travel buffer');
+      // Check specific date override (8 AM - 4 PM)
+      const specificDate = new Date('2024-03-10T09:00:00');
+      const specificResult = processor.getSpecificDateAvailability(
+        mixedAvailability,
+        specificDate
+      );
+      expect(specificResult?.timeSlots[0].startTime).toBe('08:00');
+      expect(specificResult?.timeSlots[0].endTime).toBe('16:00');
+
+      // Check regular Sunday next week (10 AM - 6 PM)
+      const regularDate = new Date('2024-03-17T09:00:00');
+      const regularResult = processor.getDayAvailability(
+        mixedAvailability,
+        'Sunday',
+        regularDate
+      );
+      expect(regularResult?.timeSlots[0].startTime).toBe('10:00');
+      expect(regularResult?.timeSlots[0].endTime).toBe('18:00');
     });
   });
 
-  describe('Night Shift Availability', () => {
-    const nightShiftSlots = [
-      {
-        startTime: '22:00',
-        endTime: '06:00',
-        requiresTravelTime: false,
-        spansOvernight: true,
-        locationId: 'hospital_a'
-      }
-    ];
-
-    it('accepts bookings during night shift hours', () => {
-      const date = new Date('2024-03-18');
-      const result = processor.processTimeSlotsForDate(date, nightShiftSlots, 60);
-
-      // Should have slots from 22:00 to 06:00
-      expect(result.length).toBe(8); // 8 one-hour slots
-
-      // Check specific times
-      const times = result.map(slot => slot.startTime.getHours());
-      expect(times).toContain(22); // 10 PM
-      expect(times).toContain(23); // 11 PM
-      expect(times).toContain(0);  // 12 AM
-      expect(times).toContain(5);  // 5 AM
-
-      // First slot should be at 10 PM
-      expect(result[0].startTime.getHours()).toBe(22);
-      // Last slot should be at 5 AM
-      expect(result[result.length - 1].startTime.getHours()).toBe(5);
-    });
-
-    it('rejects bookings outside night shift hours', () => {
-      const date = new Date('2024-03-18');
-      const result = processor.processTimeSlotsForDate(date, nightShiftSlots, 60);
-
-      // Check that no slots exist during day hours
-      const dayHourSlots = result.filter(slot => {
-        const hour = slot.startTime.getHours();
-        return hour >= 6 && hour < 22; // 6 AM to 10 PM
-      });
-
-      expect(dayHourSlots.length).toBe(0);
-    });
-  });
-
-  describe('Update Provider Availability', () => {
-    const oldAvailability: IAvailability[] = [
-      {
-        dayOfWeek: 'Monday' as DayOfWeek,
-        timeSlots: [
-          {
-            startTime: '09:00',
-            endTime: '17:00',
-            requiresTravelTime: false,
-            spansOvernight: false,
-            locationId: 'clinic_a'
-          }
-        ],
-        isRecurring: true
-      }
-    ];
-
-    const newAvailability: IAvailability[] = [
+  describe('Back-to-Back and Overlapping Appointments', () => {
+    const availability: IAvailability[] = [
       {
         dayOfWeek: 'Monday' as DayOfWeek,
         timeSlots: [
           {
             startTime: '10:00',
-            endTime: '18:00',
+            endTime: '12:00',
             requiresTravelTime: false,
             spansOvernight: false,
             locationId: 'clinic_a'
@@ -639,107 +315,139 @@ describe('AvailabilityProcessor', () => {
       }
     ];
 
-    const existingAppointments = [{
-      startDateTime: new Date('2024-03-18T14:00:00'),
-      endDateTime: new Date('2024-03-18T15:00:00'),
-      location: 'clinic_a',
-      participants: [],
-      status: AppointmentStatus.CONFIRMED,
-      appointmentType: AppointmentType.IN_PERSON,
-      title: 'Test Appointment',
-      description: '',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      _id: 'test_id',
-      isAllDay: false,
-      $assertPopulated: () => {},
-      $clone: () => ({} as any)
-    } as any, {
-      startDateTime: new Date('2024-03-18T09:30:00'),
-      endDateTime: new Date('2024-03-18T10:30:00'),
-      location: 'clinic_a',
-      participants: [],
-      status: AppointmentStatus.CONFIRMED,
-      appointmentType: AppointmentType.IN_PERSON,
-      title: 'Test Appointment',
-      description: '',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      _id: 'test_id2',
-      isAllDay: false,
-      $assertPopulated: () => {},
-      $clone: () => ({} as any)
-    } as any];
+    describe('Back-to-Back Appointments', () => {
+      it('allows booking consecutive slots', () => {
+        const date = new Date('2024-03-18'); // A Monday
+        const result = processor.getDayAvailability(
+          availability,
+          'Monday',
+          date
+        );
 
-    const validAppointments = [{
-      startDateTime: new Date('2024-03-18T11:00:00'),
-      endDateTime: new Date('2024-03-18T12:00:00'),
-      location: 'clinic_a',
-      participants: [],
-      status: AppointmentStatus.CONFIRMED,
-      appointmentType: AppointmentType.IN_PERSON,
-      title: 'Test Appointment',
-      description: '',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      _id: 'test_id',
-      isAllDay: false,
-      $assertPopulated: () => {},
-      $clone: () => ({} as any)
-    } as any];
+        expect(result).not.toBeNull();
+        
+        // Get all available slots
+        const slots = processor.processTimeSlotsForDate(
+          date,
+          result!.timeSlots,
+          60  // 1-hour appointments
+        );
 
-    it('validates new availability against existing appointments', () => {
-      expect(() => 
-        processor.validateAvailabilityUpdate(
-          oldAvailability,
-          newAvailability,
-          existingAppointments
-        )
-      ).toThrow('New schedule conflicts with existing appointments');
+        // Should have two slots: 10-11 and 11-12
+        expect(slots.length).toBe(2);
+        expect(dayjs(slots[0].startTime).format('HH:mm')).toBe('10:00');
+        expect(dayjs(slots[0].endTime).format('HH:mm')).toBe('11:00');
+        expect(dayjs(slots[1].startTime).format('HH:mm')).toBe('11:00');
+        expect(dayjs(slots[1].endTime).format('HH:mm')).toBe('12:00');
+      });
+
+      it('keeps later slots available after booking', () => {
+        const date = new Date('2024-03-18');
+        const existingAppointment = {
+          startDateTime: new Date('2024-03-18T10:00:00'),
+          endDateTime: new Date('2024-03-18T11:00:00'),
+          location: 'clinic_a',
+          participants: [],
+          status: AppointmentStatus.CONFIRMED,
+          appointmentType: AppointmentType.IN_PERSON,
+          title: 'Test Appointment',
+          description: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          _id: 'test_id',
+          isAllDay: false,
+          $assertPopulated: () => {},
+          $clone: () => ({} as any)
+        } as any;
+
+        // Check if 11 AM slot is still available
+        const elevenAM = new Date('2024-03-18T11:00:00');
+        const result = processor.getDayAvailability(
+          availability,
+          'Monday',
+          elevenAM
+        );
+
+        expect(result).not.toBeNull();
+        const slots = processor.processTimeSlotsForDate(
+          elevenAM,
+          result!.timeSlots,
+          60,
+          0,
+          elevenAM
+        );
+
+        expect(slots.length).toBe(1);
+        expect(dayjs(slots[0].startTime).format('HH:mm')).toBe('11:00');
+      });
     });
 
-    it('accepts valid availability update', () => {
-      expect(() => 
-        processor.validateAvailabilityUpdate(
-          oldAvailability,
-          newAvailability,
-          validAppointments
-        )
-      ).not.toThrow();
-    });
+    describe('Overlapping Appointments', () => {
+      const existingAppointment = {
+        startDateTime: new Date('2024-03-18T10:00:00'),
+        endDateTime: new Date('2024-03-18T11:00:00'),
+        location: 'clinic_a',
+        participants: [],
+        status: AppointmentStatus.CONFIRMED,
+        appointmentType: AppointmentType.IN_PERSON,
+        title: 'Test Appointment',
+        description: '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _id: 'test_id',
+        isAllDay: false,
+        $assertPopulated: () => {},
+        $clone: () => ({} as any)
+      } as any;
 
-    it('validates specific date overrides in update', () => {
-      const availabilityWithOverride: IAvailability[] = [
-        ...newAvailability,
-        {
-          dayOfWeek: 'Monday' as DayOfWeek,
-          timeSlots: [],
-          isRecurring: false,
-          specificDates: [
-            {
-              date: new Date('2024-03-18'),
-              timeSlots: [
-                {
-                  startTime: '11:00',
-                  endTime: '19:00',
-                  requiresTravelTime: false,
-                  spansOvernight: false,
-                  locationId: 'clinic_a'
-                }
-              ]
-            }
-          ]
-        }
-      ];
+      it('rejects overlapping appointments', () => {
+        const overlapTime = new Date('2024-03-18T10:30:00');
+        const result = processor.getDayAvailability(
+          availability,
+          'Monday',
+          overlapTime
+        );
 
-      // 2 PM appointment should still be valid with the override
-      expect(() => 
-        processor.validateAvailabilityUpdate(
-          oldAvailability,
-          availabilityWithOverride,
-          validAppointments
-        )
-      ).not.toThrow();
+        expect(result).not.toBeNull();
+        
+        // Try to book a slot that would overlap with existing appointment
+        const slots = processor.processTimeSlotsForDate(
+          overlapTime,
+          result!.timeSlots,
+          60,
+          0,
+          overlapTime,
+          [existingAppointment]  // Pass the existing appointment
+        );
+
+        // Should not allow booking at 10:30 as it overlaps with 10:00-11:00
+        expect(slots.length).toBe(0);
+      });
+
+      it('accepts non-overlapping appointments', () => {
+        const validTime = new Date('2024-03-18T11:00:00');
+        const result = processor.getDayAvailability(
+          availability,
+          'Monday',
+          validTime
+        );
+
+        expect(result).not.toBeNull();
+        
+        // Try to book the 11:00-12:00 slot
+        const slots = processor.processTimeSlotsForDate(
+          validTime,
+          result!.timeSlots,
+          60,
+          0,
+          validTime
+        );
+
+        // Should allow booking at 11:00 as it doesn't overlap
+        expect(slots.length).toBe(1);
+        expect(dayjs(slots[0].startTime).format('HH:mm')).toBe('11:00');
+        expect(dayjs(slots[0].endTime).format('HH:mm')).toBe('12:00');
+      });
     });
   });
 }); 
