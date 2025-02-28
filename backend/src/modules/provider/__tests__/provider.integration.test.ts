@@ -4,11 +4,13 @@ import { UserRole } from '../../user/user.schema';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { DayOfWeek } from '../provider.schema';
 import { AppointmentType } from '../../appointmentType/appointmentType.schema';
+import { Organization } from '../../organization/organization.schema';
 
 describe('Provider Integration Tests', () => {
   let mongoServer: MongoMemoryReplSet;
   let providerService: ProviderService;
   let serviceId: mongoose.Types.ObjectId;
+  let organizationId: mongoose.Types.ObjectId;
 
   beforeAll(async () => {
     // Create replica set
@@ -31,9 +33,20 @@ describe('Provider Integration Tests', () => {
     const service = await AppointmentType.create({
       name: 'Test Service',
       duration: 60,
-      description: 'Test service description'
+      description: 'Test service description',
+      organizationId: new mongoose.Types.ObjectId()
     });
     serviceId = service._id;
+
+    // Create a test organization
+    const organization = await Organization.create({
+      name: 'Test Organization',
+      contact: {
+        email: 'test@org.com',
+        phone: '+1234567890'
+      }
+    });
+    organizationId = organization._id;
   });
 
   afterAll(async () => {
@@ -54,6 +67,7 @@ describe('Provider Integration Tests', () => {
         try {
           // First provider data
           const firstProviderData = {
+            organizationId: organizationId as any,
             servicesOffered: [],
             availability: [{
               dayOfWeek: 'Monday' as DayOfWeek,
@@ -78,6 +92,7 @@ describe('Provider Integration Tests', () => {
 
           // Second provider data with same phone number
           const secondProviderData = {
+            organizationId: organizationId as any,
             servicesOffered: [],
             availability: [{
               dayOfWeek: 'Tuesday' as DayOfWeek,
@@ -128,6 +143,7 @@ describe('Provider Integration Tests', () => {
     // Add a positive test case
     it('should allow providers with different phone numbers', async () => {
       const firstProviderData = {
+        organizationId: organizationId as any,
         servicesOffered: [],
         availability: [{
           dayOfWeek: 'Monday' as DayOfWeek,
@@ -151,6 +167,7 @@ describe('Provider Integration Tests', () => {
       };
 
       const secondProviderData = {
+        organizationId: organizationId as any,
         servicesOffered: [],
         availability: [{
           dayOfWeek: 'Tuesday' as DayOfWeek,
@@ -186,6 +203,7 @@ describe('Provider Integration Tests', () => {
 
       try {
         const firstProviderData = {
+          organizationId: organizationId as any,
           servicesOffered: [],
           availability: [{
             dayOfWeek: 'Monday' as DayOfWeek,
@@ -216,7 +234,10 @@ describe('Provider Integration Tests', () => {
         );
 
         // Attempt to create second provider with same phone in same transaction
-        const secondProviderData = { ...firstProviderData };
+        const secondProviderData = { 
+          ...firstProviderData,
+          organizationId: organizationId as any
+        };
         const secondUserData = {
           ...firstUserData,
           email: 'provider2@test.com'
@@ -242,6 +263,42 @@ describe('Provider Integration Tests', () => {
       const User = mongoose.model('User');
       const usersWithPhone = await User.find({ phone: '+12345678901' });
       expect(usersWithPhone).toHaveLength(1);
+    });
+
+    it('should create a provider with a valid user', async () => {
+      // Define providerData with explicit type casting to resolve ObjectId mismatch
+      const providerData = {
+        organizationId: organizationId as any, // Use type assertion to bypass type checking
+        servicesOffered: [serviceId as any],
+        availability: [
+          {
+            dayOfWeek: 'Monday' as DayOfWeek,
+            timeSlots: [{
+              startTime: '09:00',
+              endTime: '17:00',
+              requiresTravelTime: false,
+              spansOvernight: false
+            }],
+            isRecurring: true
+          }
+        ]
+      };
+      
+      const userData = {
+        email: 'provider@test.com',
+        firstName: 'Test',
+        lastName: 'Provider',
+        phone: '+12345678901',
+        password: 'password123',
+        role: UserRole.PROVIDER
+      };
+      
+      const result = await providerService.createProviderWithUser(providerData, userData);
+      
+      expect(result).toBeDefined();
+      expect(result.provider).toBeDefined();
+      expect(result.user).toBeDefined();
+      expect(result.provider.organizationId.toString()).toBe(organizationId.toString());
     });
   });
 }); 

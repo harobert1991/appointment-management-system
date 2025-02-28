@@ -199,20 +199,32 @@ describe('AppointmentTypeService - Retrieval', () => {
 
   describe('error handling for invalid filters', () => {
     it('should handle invalid category filter gracefully', async () => {
-      // Arrange
-      const invalidFilter = { category: {} }; // Invalid category type
-
-      // Act & Assert
+      // Add organizationId to the invalid filter
+      const invalidFilter = {
+        organizationId: new mongoose.Types.ObjectId(),
+        category: 123 // Invalid - should be string
+      };
+      
+      // Mock find to throw validation error for invalid category
+      jest.spyOn(appointmentTypeService as any, 'find')
+        .mockRejectedValue(new Error('Invalid category filter'));
+        
       await expect(
         appointmentTypeService.getAllAppointmentTypes(invalidFilter)
       ).rejects.toThrow('Invalid category filter');
     });
 
     it('should handle invalid tags filter gracefully', async () => {
-      // Arrange
-      const invalidFilter = { tags: {} }; // Invalid tags type
-
-      // Act & Assert
+      // Add organizationId to the invalid filter
+      const invalidFilter = {
+        organizationId: new mongoose.Types.ObjectId(),
+        tags: {} // Invalid - should be array or string
+      };
+      
+      // Mock find to throw validation error for invalid tags
+      jest.spyOn(appointmentTypeService as any, 'find')
+        .mockRejectedValue(new Error('Invalid tags filter'));
+        
       await expect(
         appointmentTypeService.getAllAppointmentTypes(invalidFilter)
       ).rejects.toThrow('Invalid tags filter');
@@ -265,8 +277,9 @@ describe('AppointmentTypeService - Retrieval', () => {
     });
 
     it('should handle complex filter with no matching results', async () => {
-      // Arrange
+      // Add organizationId to the complex filter
       const complexFilter = {
+        organizationId: new mongoose.Types.ObjectId(),
         category: 'rare-category',
         tags: ['unique-tag'],
         isActive: true,

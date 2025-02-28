@@ -17,13 +17,23 @@ export class AppointmentTypeService extends DatabaseService<IAppointmentType> {
   }
 
   async createAppointmentType(data: Partial<IAppointmentType>): Promise<IAppointmentType> {
+    // Validate organizationId is present
+    if (!data.organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     if (data.duration) {
       this.validateDuration(data.duration);
     }
-    // Check if name already exists
-    const existingType = await this.findOne({ name: data.name });
+    
+    // Check if name already exists within the same organization
+    const existingType = await this.findOne({ 
+      name: data.name,
+      organizationId: data.organizationId
+    });
+    
     if (existingType) {
-      throw new Error(`Appointment type with name "${data.name}" already exists`);
+      throw new Error(`Appointment type with name "${data.name}" already exists in this organization`);
     }
 
     // Ensure isActive is set if not provided
@@ -42,6 +52,11 @@ export class AppointmentTypeService extends DatabaseService<IAppointmentType> {
     // Validate filter is an object
     if (typeof filter !== 'object' || filter === null) {
       throw new Error('Invalid filter format');
+    }
+
+    // Validate organizationId is present in the filter
+    if (!filter.organizationId) {
+      throw new Error('Organization ID is required');
     }
 
     // Validate category if present
@@ -70,14 +85,21 @@ export class AppointmentTypeService extends DatabaseService<IAppointmentType> {
       return null;
     }
 
-    // If name is being updated, check for uniqueness
+    // Prevent changing organizationId after creation
+    if (updateData.organizationId && 
+        updateData.organizationId.toString() !== existingAppointment.organizationId.toString()) {
+      throw new Error('Organization ID cannot be changed once set');
+    }
+
+    // If name is being updated, check for uniqueness within the organization
     if (updateData.name && updateData.name !== existingAppointment.name) {
       const nameExists = await this.findOne({ 
         name: updateData.name,
+        organizationId: existingAppointment.organizationId,
         _id: { $ne: id } // Exclude current document from check
       });
       if (nameExists) {
-        throw new Error(`Appointment type with name "${updateData.name}" already exists`);
+        throw new Error(`Appointment type with name "${updateData.name}" already exists in this organization`);
       }
     }
 

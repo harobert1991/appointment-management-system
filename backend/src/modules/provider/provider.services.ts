@@ -16,6 +16,7 @@ import { UserService } from '../user/user.services';
 import { IUser } from '../user/user.schema';
 import { ClientSession } from 'mongoose';
 import mongoose from 'mongoose';
+import { UserRole } from '../user/user.schema';
 
 // Initialize dayjs plugins
 dayjs.extend(isSameOrAfter);
@@ -63,10 +64,18 @@ export class ProviderService extends DatabaseService<IProvider> {
         session.startTransaction();
       }
 
+      // Validate required organizationId
+      if (!providerData.organizationId) {
+        throw new Error('Organization ID is required');
+      }
+
+      // Set role to PROVIDER
+      userData.role = UserRole.PROVIDER;
+
       // Create user first
       const user = await this.userService.createUser(userData, { session });
 
-      // Create provider with user reference
+      // Create provider with user reference and organizationId
       const provider = await this.create({
         ...providerData,
         userId: user._id
@@ -76,17 +85,7 @@ export class ProviderService extends DatabaseService<IProvider> {
         await session.commitTransaction();
       }
 
-      return {
-        provider,
-        user: {
-          _id: user._id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone,
-          role: user.role
-        } as IUser
-      };
+      return { provider, user };
     } catch (error) {
       if (ownSession) {
         await session.abortTransaction();
@@ -246,10 +245,17 @@ export class ProviderService extends DatabaseService<IProvider> {
   async updateProvider(
     providerId: string,
     data: Partial<IProvider>
-  ): Promise<IProvider> {
-    const provider = await this.findById(providerId);
-    if (!provider) {
-      throw new ProviderNotFoundError(providerId);
+  ): Promise<IProvider | null> {
+    // First check if provider exists
+    const existingProvider = await this.findOne({ _id: providerId });
+    if (!existingProvider) {
+      return null;
+    }
+
+    // Prevent changing organizationId after creation
+    if (data.organizationId && 
+        data.organizationId.toString() !== existingProvider.organizationId.toString()) {
+      throw new Error('Organization ID cannot be changed once set');
     }
 
     // If availability is being updated, use the dedicated flow
@@ -306,7 +312,6 @@ export class ProviderService extends DatabaseService<IProvider> {
         futureAppointments.map((appointment: IAppointmentEvent) =>
           appointmentService.cancelAppointment(
             appointment._id,
-            'system',
             'Provider no longer available'
           )
         )

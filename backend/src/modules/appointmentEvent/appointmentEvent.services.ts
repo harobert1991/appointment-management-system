@@ -22,6 +22,11 @@ export class AppointmentEventService extends DatabaseService<IAppointmentEvent> 
     // Validate required fields
     this.validateRequiredFields(appointmentData);
 
+    // Validate organizationId is present
+    if (!appointmentData.organizationId) {
+      throw new Error('Organization ID is required');
+    }
+
     // Check for scheduling conflicts
     await this.checkForConflicts(
       appointmentData.startDateTime!,
@@ -80,6 +85,12 @@ export class AppointmentEventService extends DatabaseService<IAppointmentEvent> 
       throw new Error('Appointment not found');
     }
 
+    // Prevent changing organizationId after creation
+    if (updateData.organizationId && 
+        updateData.organizationId.toString() !== existingAppointment.organizationId.toString()) {
+      throw new Error('Organization ID cannot be changed once set');
+    }
+
     // Check if time is being updated
     if (updateData.startDateTime || updateData.endDateTime) {
       await this.checkForConflicts(
@@ -106,12 +117,18 @@ export class AppointmentEventService extends DatabaseService<IAppointmentEvent> 
    */
   async cancelAppointment(
     id: string,
-    cancelledBy: string,
-    reason: string
+    reason: string,
+    cancelledBy?: { userId: string; organizationId?: string }
   ): Promise<IAppointmentEvent | null> {
     const appointment = await this.findOne({ _id: id });
     if (!appointment) {
       throw new Error('Appointment not found');
+    }
+
+    // Only validate organization if cancelledBy is provided with organizationId
+    if (cancelledBy?.organizationId && 
+        appointment.organizationId.toString() !== cancelledBy.organizationId.toString()) {
+      throw new Error('Cannot modify appointments from different organizations');
     }
 
     if (appointment.status === AppointmentStatus.CANCELLED) {
@@ -126,7 +143,7 @@ export class AppointmentEventService extends DatabaseService<IAppointmentEvent> 
       status: AppointmentStatus.CANCELLED,
       cancellationReason: {
         reason,
-        cancelledBy,
+        cancelledBy: cancelledBy?.userId || 'system',
         cancelledAt: new Date()
       }
     };

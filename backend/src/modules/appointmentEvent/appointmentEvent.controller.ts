@@ -15,6 +15,16 @@ export class AppointmentEventController {
    */
   public createAppointment = async (req: Request, res: Response): Promise<void> => {
     try {
+      // Check if organizationId is provided
+      if (!req.body.organizationId) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation Error',
+          details: 'Organization ID is required'
+        });
+        return;
+      }
+
       const appointment = await this.service.createAppointment(req.body);
       res.status(201).json({
         success: true,
@@ -97,8 +107,22 @@ export class AppointmentEventController {
    */
   public getAppointmentsByDateRange = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, organizationId } = req.query;
+      
+      // Validate organizationId is provided
+      if (!organizationId) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation Error',
+          details: 'Organization ID is required'
+        });
+        return;
+      }
+      
       const filters = req.query.filters ? JSON.parse(String(req.query.filters)) : {};
+      
+      // Always filter by organization ID
+      filters.organizationId = organizationId;
 
       const appointments = await this.service.findByDateRange(
         new Date(String(startDate)),
@@ -126,9 +150,26 @@ export class AppointmentEventController {
   public getAppointmentsByParticipant = async (req: Request, res: Response): Promise<void> => {
     try {
       const { userId } = req.params;
+      const { organizationId } = req.query;
       const status = req.query.status as AppointmentStatus | undefined;
+      
+      // Validate organizationId is provided
+      if (!organizationId) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation Error',
+          details: 'Organization ID is required'
+        });
+        return;
+      }
 
-      const appointments = await this.service.findByParticipant(userId, status);
+      // Find appointments by participant, additionally filtered by organizationId
+      const appointments = await this.service.find({
+        'participants.userId': userId,
+        organizationId,
+        ...(status ? { status } : {})
+      });
+      
       res.json({
         success: true,
         data: appointments

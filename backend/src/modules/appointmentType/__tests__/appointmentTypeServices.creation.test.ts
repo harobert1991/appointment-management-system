@@ -32,7 +32,8 @@ describe('AppointmentTypeService - Creation', () => {
     const appointmentTypeData = {
       name: 'Regular Consultation',
       duration: 30, // 30 minutes
-      isActive: true
+      isActive: true,
+      organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
     };
 
     // Act
@@ -89,7 +90,8 @@ describe('AppointmentTypeService - Creation', () => {
         'specialist',
         'comprehensive',
         'premium'
-      ]
+      ],
+      organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
     };
 
     // Act
@@ -132,7 +134,8 @@ describe('AppointmentTypeService - Creation', () => {
       // Arrange
       const invalidData = {
         // Missing name and duration
-        isActive: true
+        isActive: true,
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to throw validation error
@@ -150,7 +153,8 @@ describe('AppointmentTypeService - Creation', () => {
       const invalidData = {
         name: 'Test Appointment',
         duration: -30,
-        isActive: true
+        isActive: true,
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to throw validation error
@@ -170,7 +174,8 @@ describe('AppointmentTypeService - Creation', () => {
         duration: 30,
         bufferTimeBefore: -10,
         bufferTimeAfter: -5,
-        isActive: true
+        isActive: true,
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to throw validation error
@@ -189,7 +194,8 @@ describe('AppointmentTypeService - Creation', () => {
         name: 'Test Appointment',
         duration: 30,
         price: -50,
-        isActive: true
+        isActive: true,
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to throw validation error
@@ -208,7 +214,8 @@ describe('AppointmentTypeService - Creation', () => {
       const duplicateData = {
         name: existingName,
         duration: 30,
-        isActive: true
+        isActive: true,
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to throw duplicate key error
@@ -234,7 +241,8 @@ describe('AppointmentTypeService - Creation', () => {
               type: 'physical' as const,
               address: '123 Test St'
             }
-          ]
+          ],
+          organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
         };
 
         // Mock create to throw validation error
@@ -258,7 +266,8 @@ describe('AppointmentTypeService - Creation', () => {
               name: 'Test Location',
               address: '123 Test St'
             }
-          ]
+          ],
+          organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
         } as Partial<IAppointmentType>; // Type assertion to bypass TypeScript check
 
         // Mock create to throw validation error
@@ -283,7 +292,8 @@ describe('AppointmentTypeService - Creation', () => {
               type: 'hybrid' as any, // invalid type
               address: '123 Test St'
             }
-          ]
+          ],
+          organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
         };
 
         // Mock create to throw validation error
@@ -311,7 +321,8 @@ describe('AppointmentTypeService - Creation', () => {
                 longitude: -73.123456
               }
             }
-          ]
+          ],
+          organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
         };
 
         // Mock create to throw validation error
@@ -348,7 +359,8 @@ describe('AppointmentTypeService - Creation', () => {
             type: 'physical' as const,
             address: 'G'.repeat(201) // Exceeds 200 char limit
           }
-        ]
+        ],
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to throw validation error
@@ -391,7 +403,8 @@ describe('AppointmentTypeService - Creation', () => {
             type: 'physical' as const,
             address: 'G'.repeat(200) // Exactly 200 chars
           }
-        ]
+        ],
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to return valid appointment type
@@ -433,7 +446,8 @@ describe('AppointmentTypeService - Creation', () => {
             address: '123 Test St'
           }
         ],
-        category: 'invalid-category' as any // Assuming category has predefined values
+        category: 'invalid-category' as any, // Assuming category has predefined values
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to throw validation error
@@ -467,7 +481,8 @@ describe('AppointmentTypeService - Creation', () => {
             type: 'virtual' as const
           }
         ],
-        category: 'consultation'
+        category: 'consultation',
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to return valid appointment type
@@ -504,7 +519,8 @@ describe('AppointmentTypeService - Creation', () => {
             address: '123 Test St'
             // Missing coordinates for physical location
           }
-        ]
+        ],
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to throw validation error
@@ -533,7 +549,8 @@ describe('AppointmentTypeService - Creation', () => {
               // Missing longitude
             }
           }
-        ]
+        ],
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       } as any; // Type assertion needed due to partial coordinates
 
       // Mock create to throw validation error
@@ -558,7 +575,8 @@ describe('AppointmentTypeService - Creation', () => {
             type: 'virtual' as const
             // No coordinates needed for virtual location
           }
-        ]
+        ],
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Mock create to return valid appointment type
@@ -581,34 +599,72 @@ describe('AppointmentTypeService - Creation', () => {
   });
 
   describe('name uniqueness validation', () => {
-    it('should reject creation with duplicate name', async () => {
+    it('should reject creation with duplicate name within same organization', async () => {
       // Arrange
       const existingName = 'Regular Consultation';
+      const orgId = new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId;
       
       // Override the default findOne mock for this specific test
       jest.spyOn(appointmentTypeService as any, 'findOne')
         .mockReset()
-        .mockResolvedValue({ name: existingName });
+        .mockResolvedValue({ name: existingName, organizationId: orgId });
 
       const duplicateData = {
         name: existingName,
         duration: 30,
-        isActive: true
+        isActive: true,
+        organizationId: orgId
       };
 
       // Act & Assert
       await expect(appointmentTypeService.createAppointmentType(duplicateData))
         .rejects
-        .toThrow(`Appointment type with name "${existingName}" already exists`);
+        .toThrow(`Appointment type with name "${existingName}" already exists in this organization`);
 
-      // Verify findOne was called with correct parameters
+      // Verify findOne was called with correct parameters - checking within same organization
       expect(appointmentTypeService['findOne'])
-        .toHaveBeenCalledWith({ name: existingName });
+        .toHaveBeenCalledWith({ 
+          name: existingName,
+          organizationId: orgId
+        });
     });
 
-    it('should allow creation with unique name', async () => {
+    it('should allow creation with duplicate name in different organization', async () => {
+      // Arrange
+      const existingName = 'Regular Consultation';
+      const orgId1 = new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId;
+      const orgId2 = new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId;
+      
+      // First findOne call checks for the specific org and returns null
+      jest.spyOn(appointmentTypeService as any, 'findOne')
+        .mockResolvedValue(null);
+
+      const appointmentTypeData = {
+        name: existingName,
+        duration: 30,
+        isActive: true,
+        organizationId: orgId2
+      };
+
+      // Act
+      const createdAppointmentType = await appointmentTypeService.createAppointmentType(appointmentTypeData);
+
+      // Assert
+      expect(createdAppointmentType).toBeDefined();
+      expect(createdAppointmentType.name).toBe(existingName);
+
+      // Verify findOne was called with correct parameters - checking within specific organization
+      expect(appointmentTypeService['findOne'])
+        .toHaveBeenCalledWith({ 
+          name: existingName,
+          organizationId: orgId2 
+        });
+    });
+
+    it('should allow creation with unique name within same organization', async () => {
       // Arrange
       const uniqueName = 'Unique Consultation';
+      const orgId = new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId;
       
       // Mock findOne to simulate no existing appointment type
       jest.spyOn(appointmentTypeService as any, 'findOne')
@@ -617,7 +673,8 @@ describe('AppointmentTypeService - Creation', () => {
       const validData = {
         name: uniqueName,
         duration: 30,
-        isActive: true
+        isActive: true,
+        organizationId: orgId
       };
 
       // Act
@@ -629,7 +686,10 @@ describe('AppointmentTypeService - Creation', () => {
 
       // Verify findOne was called with correct parameters
       expect(appointmentTypeService['findOne'])
-        .toHaveBeenCalledWith({ name: uniqueName });
+        .toHaveBeenCalledWith({ 
+          name: uniqueName,
+          organizationId: orgId 
+        });
     });
   });
 
@@ -639,7 +699,8 @@ describe('AppointmentTypeService - Creation', () => {
       const invalidData = {
         name: 'Long Appointment',
         duration: config.appointment.maxDurationMinutes + 1,
-        isActive: true
+        isActive: true,
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Act & Assert
@@ -653,7 +714,8 @@ describe('AppointmentTypeService - Creation', () => {
       const validData = {
         name: 'Maximum Duration Appointment',
         duration: config.appointment.maxDurationMinutes,
-        isActive: true
+        isActive: true,
+        organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId
       };
 
       // Act

@@ -14,6 +14,7 @@ export const routes: RouteConfig[] = [
         'Content-Type': 'application/json'
       },
       body: {
+        organizationId: { type: 'string', required: true },
         servicesOffered: { type: 'array', required: true },
         availability: {
           type: 'array',
@@ -72,6 +73,15 @@ export const routes: RouteConfig[] = [
         body: {
           error: 'Failed to create provider',
           message: 'string'
+        }
+      },
+      {
+        status: 404,
+        description: 'Not Found - Organization Not Found',
+        body: {
+          success: false,
+          error: 'Not Found',
+          details: 'Organization not found'
         }
       }
     ]

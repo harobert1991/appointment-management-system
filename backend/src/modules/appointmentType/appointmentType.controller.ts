@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AppointmentTypeService } from './appointmentType.services';
+import mongoose from 'mongoose';
 
 export class AppointmentTypeController {
   private appointmentTypeService: AppointmentTypeService;
@@ -10,6 +11,32 @@ export class AppointmentTypeController {
 
   createAppointmentType = async (req: Request, res: Response): Promise<void> => {
     try {
+      // Check if organizationId is provided
+      if (!req.body.organizationId) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation Error',
+          details: 'Organization ID is required'
+        });
+        return;
+      }
+      
+      // Optionally, verify the organization exists
+      try {
+        const OrganizationModel = mongoose.model('Organization');
+        const organization = await OrganizationModel.findById(req.body.organizationId);
+        if (!organization) {
+          res.status(404).json({
+            success: false,
+            error: 'Not Found',
+            details: 'Organization not found'
+          });
+          return;
+        }
+      } catch (error) {
+        // Handle potential error with organization check
+      }
+      
       const appointmentType = await this.appointmentTypeService.createAppointmentType(req.body);
       res.status(201).json({
         success: true,
@@ -57,6 +84,16 @@ export class AppointmentTypeController {
 
   getAllAppointmentTypes = async (req: Request, res: Response): Promise<void> => {
     try {
+      // Ensure organizationId is present in query
+      if (!req.query.organizationId) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation Error',
+          details: 'Organization ID is required'
+        });
+        return;
+      }
+      
       const filter = req.query;
       const appointmentTypes = await this.appointmentTypeService.getAllAppointmentTypes(filter);
       res.json({

@@ -61,8 +61,8 @@ describe('AppointmentEventService - Cancellation', () => {
     // Act
     const cancelledAppointment = await appointmentEventService.cancelAppointment(
       appointmentId,
-      cancelledBy,
-      reason
+      reason,
+      { userId: cancelledBy }
     );
 
     // Assert
@@ -106,8 +106,8 @@ describe('AppointmentEventService - Cancellation', () => {
     // Act & Assert
     await expect(appointmentEventService.cancelAppointment(
       appointmentId,
-      cancelledBy,
-      reason
+      reason,
+      { userId: cancelledBy }
     )).rejects.toThrow('Cannot cancel a completed appointment');
 
     // Verify findOne was called
@@ -132,8 +132,8 @@ describe('AppointmentEventService - Cancellation', () => {
     // Act & Assert
     await expect(appointmentEventService.cancelAppointment(
       nonExistentId,
-      cancelledBy,
-      reason
+      reason,
+      { userId: cancelledBy }
     )).rejects.toThrow('Appointment not found');
 
     // Verify findOne was called
