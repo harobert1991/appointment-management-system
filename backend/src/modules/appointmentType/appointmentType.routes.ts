@@ -16,6 +16,7 @@ export const routes: RouteConfig[] = [
       body: {
         name: { type: 'string', required: true },
         duration: { type: 'number', required: true },
+        organizationId: { type: 'string', required: true },
         description: { type: 'string', required: false },
         bufferTimeBefore: { type: 'number', required: false },
         bufferTimeAfter: { type: 'number', required: false },
@@ -108,6 +109,7 @@ export const routes: RouteConfig[] = [
         'Content-Type': 'application/json'
       },
       query: {
+        organizationId: { type: 'string', required: true },
         category: { type: 'string', required: false },
         tags: { type: 'string', required: false },
         isActive: { type: 'boolean', required: false }

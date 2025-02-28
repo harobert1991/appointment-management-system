@@ -56,7 +56,8 @@ describe('AppointmentEventController', () => {
             timeBeforeEvent: 60,
             isEnabled: true
           }
-        ]
+        ],
+        organizationId: new mongoose.Types.ObjectId().toString()
       }
     };
 
@@ -163,8 +164,9 @@ describe('AppointmentEventController - Update', () => {
 
     mockRequest = {
       params: { id: appointmentId },
-      body: updateData
-    };
+      body: updateData,
+      organizationId: new mongoose.Types.ObjectId().toString()
+    } as any as Request;
 
     (AppointmentEventService.prototype.updateAppointment as jest.Mock).mockResolvedValue(updatedAppointment);
 
@@ -187,8 +189,9 @@ describe('AppointmentEventController - Update', () => {
     const appointmentId = new mongoose.Types.ObjectId().toString();
     mockRequest = {
       params: { id: appointmentId },
-      body: { title: 'Updated Appointment' }
-    };
+      body: { title: 'Updated Appointment' },
+      organizationId: new mongoose.Types.ObjectId().toString()
+    } as any as Request;
 
     (AppointmentEventService.prototype.updateAppointment as jest.Mock).mockResolvedValue(null);
 
@@ -208,8 +211,9 @@ describe('AppointmentEventController - Update', () => {
     const error = new Error('Update failed');
     mockRequest = {
       params: { id: 'invalid-id' },
-      body: { title: 'Updated Appointment' }
-    };
+      body: { title: 'Updated Appointment' },
+      organizationId: new mongoose.Types.ObjectId().toString()
+    } as any as Request;
 
     (AppointmentEventService.prototype.updateAppointment as jest.Mock).mockRejectedValue(error);
 

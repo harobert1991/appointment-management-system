@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ProviderService } from './provider.services';
 import { ICreateProviderRequest, validateDateFormat } from './provider.schema';
 import { AppointmentTypeService } from '../appointmentType/appointmentType.services';
+import mongoose from 'mongoose';
 
 export class ProviderController {
   private providerService: ProviderService;
@@ -18,9 +19,38 @@ export class ProviderController {
    */
   createProvider = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { user: userData, ...providerData } = req.body as ICreateProviderRequest;
+      const { user: userData, organizationId, ...providerData } = req.body as ICreateProviderRequest;
       
-      const result = await this.providerService.createProviderWithUser(providerData, userData);
+      // Validate organizationId exists
+      if (!organizationId) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation Error',
+          details: 'organizationId is required'
+        });
+        return;
+      }
+
+      // Optionally: check if organization exists
+      try {
+        const OrganizationModel = mongoose.model('Organization');
+        const organization = await OrganizationModel.findById(organizationId);
+        if (!organization) {
+          res.status(404).json({
+            success: false,
+            error: 'Not Found',
+            details: 'Organization not found'
+          });
+          return;
+        }
+      } catch (error) {
+        // Handle potential error with organization check
+      }
+      
+      const result = await this.providerService.createProviderWithUser(
+        { ...providerData, organizationId }, 
+        userData
+      );
 
       res.status(201).json({
         success: true,
@@ -153,7 +183,7 @@ export class ProviderController {
       // Flatten and format slots for response
       const formattedSlots = allAvailableSlots.flat().map(slot => ({
         startTime: slot.startTime.toISOString(),
-        endTime: slot.endTime.toISOString(),
+        // endTime: slot.endTime.toISOString(),
         date: new Date(slot.startTime).toISOString().split('T')[0],
         locationId: slot.locationId
       }));

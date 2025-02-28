@@ -1,0 +1,9 @@
+{
+  "name": "Calendar Sync Workflow",
+  "description": "Workflow for synchronizing appointments with external calendars",
+  "triggers": {
+    "type": "webhook",
+    "endpoint": "/webhook/calendar-sync"
+  },
+  "actions": []
+} 

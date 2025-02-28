@@ -20,6 +20,7 @@ export interface IAppointmentType extends Document {
   }[];
   resourcesRequired?: string[];
   tags?: string[];
+  organizationId: Schema.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,7 +87,12 @@ const appointmentTypeSchema = new Schema({
   tags: [{
     type: String,
     trim: true
-  }]
+  }],
+  organizationId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: [true, 'Organization ID is required']
+  }
 }, {
   timestamps: true,
   versionKey: false
@@ -97,5 +103,8 @@ appointmentTypeSchema.index({ name: 1 });
 appointmentTypeSchema.index({ category: 1 });
 appointmentTypeSchema.index({ isActive: 1 });
 appointmentTypeSchema.index({ tags: 1 });
+
+// Create a compound index for name uniqueness within an organization
+appointmentTypeSchema.index({ name: 1, organizationId: 1 }, { unique: true });
 
 export const AppointmentType = mongoose.model<IAppointmentType>('AppointmentType', appointmentTypeSchema); 

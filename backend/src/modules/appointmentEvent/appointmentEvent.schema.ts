@@ -29,6 +29,7 @@ export interface IAppointmentEvent extends IEvent {
     email?: string;
     phone?: string;
   }[];
+  organizationId: Schema.Types.ObjectId;
   status: AppointmentStatus;
   appointmentType: AppointmentType;
   providerId?: string;
@@ -100,6 +101,20 @@ const appointmentEventSchema = new Schema({
         message: 'Appointment must have at least one provider or client'
       }
     ]
+  },
+  organizationId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: [true, 'Organization ID is required'],
+    validate: {
+      validator: async function(this: IAppointmentEvent, v: string) {
+        if (!v) return false;
+        const Organization = model('Organization');
+        const exists = await Organization.exists({ _id: v });
+        return exists;
+      },
+      message: 'Organization not found'
+    }
   },
   status: {
     type: String,
@@ -238,6 +253,7 @@ appointmentEventSchema.index({ status: 1 });
 appointmentEventSchema.index({ appointmentType: 1 });
 appointmentEventSchema.index({ 'participants.userId': 1 });
 appointmentEventSchema.index({ providerId: 1, clientId: 1 });
+appointmentEventSchema.index({ organizationId: 1 });
 
 export const AppointmentEvent = Event.discriminator<IAppointmentEvent>(
   'AppointmentEvent',

@@ -1,15 +1,16 @@
 export interface CreateAppointmentDto {
   title: string;
-  startDateTime: string;  // API receives dates as strings
-  endDateTime: string;
+  startDateTime: string | Date;
+  endDateTime: string | Date;
   appointmentType: 'in_person' | 'virtual' | 'phone';
-  participants: {
+  participants: Array<{
     userId: string;
     role: 'provider' | 'client' | 'other';
     name: string;
     email?: string;
     phone?: string;
-  }[];
+  }>;
   location?: string;
   additionalNotes?: string;
+  organizationId: string;
 } 

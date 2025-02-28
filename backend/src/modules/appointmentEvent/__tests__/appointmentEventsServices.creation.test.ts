@@ -45,6 +45,7 @@ describe('AppointmentEventService - Creation', () => {
     // Arrange
     const validAppointmentData = {
       title: 'Test Appointment',
+      organizationId: new mongoose.Types.ObjectId() as any as mongoose.Schema.Types.ObjectId,
       startDateTime: new Date('2024-03-20T10:00:00Z'),
       endDateTime: new Date('2024-03-20T11:00:00Z'),
       appointmentType: AppointmentType.IN_PERSON,
@@ -229,10 +230,12 @@ describe('AppointmentEventService - Creation', () => {
     it('should throw error when provider has a scheduling conflict', async () => {
       // Arrange
       const providerId = new mongoose.Types.ObjectId().toString();
+      const organizationId = new mongoose.Types.ObjectId().toString() as any as mongoose.Schema.Types.ObjectId;
       const existingAppointment = {
         startDateTime: new Date('2024-03-20T10:30:00Z'),
         endDateTime: new Date('2024-03-20T11:30:00Z'),
         providerId,
+        organizationId,
         status: AppointmentStatus.SCHEDULED
       };
 
@@ -242,6 +245,7 @@ describe('AppointmentEventService - Creation', () => {
 
       const newAppointmentData = {
         title: 'Test Appointment',
+        organizationId,
         startDateTime: new Date('2024-03-20T11:00:00Z'),
         endDateTime: new Date('2024-03-20T12:00:00Z'),
         appointmentType: AppointmentType.IN_PERSON,
@@ -266,9 +270,11 @@ describe('AppointmentEventService - Creation', () => {
     it('should throw error when participants have scheduling conflicts', async () => {
       // Arrange
       const participantId = new mongoose.Types.ObjectId().toString();
+      const organizationId = new mongoose.Types.ObjectId().toString() as any as mongoose.Schema.Types.ObjectId;
       const existingAppointment = {
         startDateTime: new Date('2024-03-20T10:30:00Z'),
         endDateTime: new Date('2024-03-20T11:30:00Z'),
+        organizationId,
         participants: [{
           userId: participantId,
           role: 'client',
@@ -290,6 +296,7 @@ describe('AppointmentEventService - Creation', () => {
 
       const newAppointmentData = {
         title: 'Test Appointment',
+        organizationId,
         startDateTime: new Date('2024-03-20T11:00:00Z'),
         endDateTime: new Date('2024-03-20T12:00:00Z'),
         appointmentType: AppointmentType.IN_PERSON,
@@ -313,16 +320,19 @@ describe('AppointmentEventService - Creation', () => {
     it('should not detect conflicts for cancelled or completed appointments', async () => {
       // Arrange
       const providerId = new mongoose.Types.ObjectId().toString();
+      const organizationId = new mongoose.Types.ObjectId().toString() as any as mongoose.Schema.Types.ObjectId;
       const existingAppointments = [
         {
           startDateTime: new Date('2024-03-20T10:30:00Z'),
           endDateTime: new Date('2024-03-20T11:30:00Z'),
+          organizationId,
           providerId,
           status: AppointmentStatus.CANCELLED
         },
         {
           startDateTime: new Date('2024-03-20T10:30:00Z'),
           endDateTime: new Date('2024-03-20T11:30:00Z'),
+          organizationId,
           providerId,
           status: AppointmentStatus.COMPLETED
         }
@@ -343,6 +353,7 @@ describe('AppointmentEventService - Creation', () => {
 
       const newAppointmentData = {
         title: 'Test Appointment',
+        organizationId,
         startDateTime: new Date('2024-03-20T11:00:00Z'),
         endDateTime: new Date('2024-03-20T12:00:00Z'),
         appointmentType: AppointmentType.IN_PERSON,
@@ -382,7 +393,8 @@ describe('AppointmentEventService - Creation', () => {
           email: 'dr.smith@example.com'
         }
       ],
-      location: 'Office 123'
+      location: 'Office 123',
+      organizationId: new mongoose.Types.ObjectId().toString()
     };
 
     // Transform DTO to service format
@@ -390,7 +402,8 @@ describe('AppointmentEventService - Creation', () => {
       ...apiRequestData,
       startDateTime: new Date(apiRequestData.startDateTime),
       endDateTime: new Date(apiRequestData.endDateTime),
-      appointmentType: apiRequestData.appointmentType as AppointmentType
+      appointmentType: apiRequestData.appointmentType as AppointmentType,
+      organizationId: new mongoose.Types.ObjectId(apiRequestData.organizationId) as any as mongoose.Schema.Types.ObjectId
     };
 
     const createdAppointment = await appointmentEventService.createAppointment(serviceData);

@@ -30,6 +30,7 @@ export interface IAvailability {
 
 export interface IProvider extends Document {
   userId: string;
+  organizationId: Schema.Types.ObjectId;
   servicesOffered: Schema.Types.ObjectId[];
   availability: IAvailability[];
   exceptions: Date[];
@@ -132,6 +133,11 @@ const providerSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'User ID is required']
+  },
+  organizationId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: [true, 'Organization ID is required']
   },
   servicesOffered: [{
     type: Schema.Types.ObjectId,
@@ -241,6 +247,7 @@ export function validateDateFormat(date: string): boolean {
 
 // Add this interface for the create provider request
 export interface ICreateProviderRequest {
+  organizationId: Schema.Types.ObjectId;
   servicesOffered: Schema.Types.ObjectId[];
   availability: {
     dayOfWeek: DayOfWeek;

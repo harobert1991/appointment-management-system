@@ -31,6 +31,7 @@ interface SchemaField {
   max?: number;
   default?: any;
   properties?: Record<string, SchemaField>;
+  items?: SchemaField | Record<string, SchemaField>;
 }
 
 export async function loadRoutes(): Promise<{ router: Router; routeConfigs: RouteConfig[] }> {

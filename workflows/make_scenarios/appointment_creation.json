@@ -1,0 +1,9 @@
+{
+  "name": "Appointment Creation Workflow",
+  "description": "Workflow for creating and managing appointments",
+  "triggers": {
+    "type": "webhook",
+    "endpoint": "/webhook/create-appointment"
+  },
+  "actions": []
+} 
