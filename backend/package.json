@@ -1,0 +1,50 @@
+{
+  "name": "appointment-management-system",
+  "version": "1.0.0",
+  "description": "Backend for appointment management system",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "nodemon",
+    "build": "tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "ngrok": "ngrok http --domain=massive-flowing-baboon.ngrok-free.app http://localhost:3000",
+    "test:appointment-type": "jest src/modules/appointmentType/__tests__",
+    "test:appointment-event": "jest src/modules/appointmentEvent/__tests__",
+    "test:provider": "jest src/modules/provider/__tests__",
+    "generate:postman-tests": "ts-node scripts/generatePostmanTests.ts"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.13",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.1.5",
+    "google-auth-library": "^9.15.1",
+    "googleapis": "^133.0.0",
+    "mongodb": "^6.13.0",
+    "mongoose": "^7.5.0",
+    "node-cache": "^5.1.2",
+    "node-cron": "^3.0.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.14",
+    "@types/mongoose": "^5.11.97",
+    "@types/node": "^20.17.16",
+    "@types/node-cron": "^3.0.0",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^9.5.0",
+    "nodemon": "^3.0.1",
+    "supertest": "^6.3.4",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
